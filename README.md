@@ -1,4 +1,4 @@
-[![REUSE status](https://api.reuse.software/badge/github.com/cap-js/-cap-js-event-broker)](https://api.reuse.software/info/github.com/cap-js/-cap-js-event-broker)
+[![REUSE status](https://api.reuse.software/badge/github.com/cap-js/event-broker)](https://api.reuse.software/info/github.com/cap-js/event-broker)
 
 # @cap-js/event-broker
 
