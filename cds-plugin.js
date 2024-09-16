@@ -1,4 +1,4 @@
-const cds = require("../cds");
+const cds = require("@sap/cds");
 const express = require("express");
 const https = require("https");
 const crypto = require("crypto");
