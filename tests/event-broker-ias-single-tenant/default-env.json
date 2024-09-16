@@ -1,0 +1,24 @@
+{
+  "VCAP_SERVICES": {
+    "event-broker": [
+      {
+        "credentials": {
+          "authentication-type": "X509_IAS",
+          "eventing": {
+            "http": {
+              "x509": {
+                "url": "https://eb-url.com"
+              }
+            }
+          },
+          "ias": {
+            "clientId": "eb-client-id"
+          }
+        },
+        "label": "event-broker",
+        "name": "cap-st-consumer-event-broker",
+        "plan": "event-connectivity"
+      }
+    ]
+  }
+}

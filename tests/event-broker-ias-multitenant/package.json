@@ -1,0 +1,26 @@
+{
+  "name": "event-broker-mock-app",
+  "dependencies": {
+    "@cap-js/event-broker": ".."
+  },
+  "cds": {
+    "requires": {
+      "multitenancy": true,
+      "messaging": {
+        "kind": "event-broker-internal"
+      },
+      "auth": {
+        "kind": "ias",
+        "credentials": {
+          "certificate": "dummyCert",
+          "key": "dummyKey"
+        }
+      },
+      "ExtSrv": {
+        "kind": "odata",
+        "model": "./srv/external/extSrv.cds",
+        "credentials": {}
+      }
+    }
+  }
+}

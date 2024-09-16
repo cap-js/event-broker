@@ -1,0 +1,39 @@
+{
+  "name": "@cap-js/event-broker",
+  "version": "1.0.0",
+  "description": "CDS plugin providing integration to SAP Event Broker",
+  "main": "cds-plugin.js",
+  "peerDependencies": {
+    "@sap/cds": "*"
+  },
+  "devDependencies": {
+    "@sap/cds-mtxs": "*"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "files": "cds-plugin.js",
+  "keywords": [],
+  "homepage": "https://cap.cloud.sap/",
+  "author": "SAP SE (https://www.sap.com)",
+  "license": "SEE LICENSE IN LICENSE",
+  "cds": {
+    "requires": {
+      "kinds": {
+        "event-broker": {
+          "impl": "@cap-js/event-broker",
+          "format": "cloudevents",
+          "vcap": {
+            "label": "event-broker"
+          }
+        },
+        "event-broker-internal": {
+          "kind": "event-broker",
+          "vcap": {
+            "label": "eventmesh-sap2sap-internal"
+          }
+        }
+      }
+    }
+  }
+}
