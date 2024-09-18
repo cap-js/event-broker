@@ -373,7 +373,7 @@ class EventBroker extends cds.MessagingService {
       this.LOG.debug("Event processed successfully.");
       return res.status(200).json({ message: "OK" });
     } catch (e) {
-      this.LOG.error("ERROR during inbound event processing:", e); // TODO: How does Event Broker do error handling?
+      this.LOG.error("ERROR during inbound event processing:", e);
       res.status(500).json({ message: "Internal Server Error!" });
     }
   }
