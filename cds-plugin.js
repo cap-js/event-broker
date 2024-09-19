@@ -170,7 +170,7 @@ class EventBroker extends cds.MessagingService {
     if (!this.auth.kind || (this.auth.kind === "ias" && !this.auth.ias))
       throw new Error(
         `${this.name}: Event Broker requires your app to be bound to an IAS instance.`,
-      ); // do not mention byo cert
+      );
 
     if (this.auth.kind === "cert") {
       if (this.isMultitenancy && !this.options.credentials?.certificate)
