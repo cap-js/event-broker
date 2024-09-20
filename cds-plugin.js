@@ -306,7 +306,7 @@ class EventBroker extends cds.MessagingService {
 
   registerWebhookEndpoints() {
     const webhookBasePath =
-      this.options.webhookPath || "/-/cds/event-broker/webhook";
+      this.options.webhookPath
     if (usedWebhookEndpoints.has(webhookBasePath))
       throw new Error(
         `${this.name}: Event Broker: Webhook endpoint already registered. Use a different one with \`options.webhookPath\`.`,
