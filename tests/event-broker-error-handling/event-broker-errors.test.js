@@ -80,11 +80,13 @@ describe('event broker error handling', () => {
     cds.app = require('express')()
 
     const eb1 = new EB()
+    eb1.options.webhookPath = '/-/cds/event-broker/webhook'
     await eb1.init()
     eb1.on('foo', () => {})
     eb1.startListening()
 
     const eb2 = new EB()
+    eb2.options.webhookPath = '/-/cds/event-broker/webhook'
     await eb2.init()
     eb2.on('foo', () => {})
     try {
