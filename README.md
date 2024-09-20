@@ -8,6 +8,12 @@ CDS plugin providing integration with SAP Event Broker.
 
 ## Requirements and Setup
 
+Install the plugin with:
+
+```bash
+npm install @cap-js/event-broker
+```
+
 Plase follow the [guide on messaging](https://cap.cloud.sap/docs/guides/messaging/) to get an overview over the messaging concepts in CAP.
 You can create an SAP Event Broker service with the following configuration:
 
