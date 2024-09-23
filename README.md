@@ -23,7 +23,7 @@ CDS plugin providing integration with SAP Event Broker.
 
 ## Requirements
 
-See [Getting Started](https://cap.cloud.sap/docs/get-started) on how to jumpstart your development and grow as you go with SAP Cloud Application Programming Model.
+See [Getting Started](https://cap.cloud.sap/docs/get-started/in-a-nutshell) on how to jumpstart your development and grow as you go with SAP Cloud Application Programming Model.
 
 
 
