@@ -49,7 +49,7 @@ describe('event-broker service with ias auth', () => {
   const { POST } = cds.test()
   beforeAll(async () => {
 
-    console.log(cds.model)
+    // console.log(cds.model)
 
     extSrv = await cds.connect.to('ExtSrv')
     ownSrv = await cds.connect.to('OwnSrv')
