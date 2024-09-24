@@ -20,7 +20,7 @@
   "peerDependencies": {
     "@sap/cds": ">=7"
   },
-  "devDependencies": {
+  "_devDependencies": {
     "@sap/cds-mtxs": "*",
     "@sap/xssec": "*",
     "@cap-js/sqlite": "*",
