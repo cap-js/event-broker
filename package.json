@@ -21,12 +21,9 @@
     "@sap/cds": ">=7"
   },
   "devDependencies": {
-    "@sap/cds-mtxs": "*",
-    "@sap/xssec": "*",
-    "@cap-js/sqlite": "*",
-    "@sap-cloud-sdk/resilience": "*"
+    "@sap-cloud-sdk/resilience": "^3.21.0",
+    "@sap/xssec": "^4.2.4"
   },
-  "keywords": [],
   "cds": {
     "requires": {
       "kinds": {
