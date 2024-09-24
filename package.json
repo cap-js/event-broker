@@ -20,9 +20,11 @@
   "peerDependencies": {
     "@sap/cds": ">=7"
   },
+  "devDependencies": {
+    "@sap/xssec": "^4"
+  },
   "_devDependencies": {
     "@sap/cds-mtxs": "*",
-    "@sap/xssec": "*",
     "@cap-js/sqlite": "*",
     "@sap-cloud-sdk/resilience": "*"
   },
