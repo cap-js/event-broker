@@ -26,9 +26,6 @@
     "@cap-js/sqlite": "*",
     "@sap-cloud-sdk/resilience": "*"
   },
-  "__devDependencies": {
-    "@sap/hdi-deploy": "5.2.3"
-  },
   "keywords": [],
   "cds": {
     "requires": {
