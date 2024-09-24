@@ -24,11 +24,6 @@
     "@sap-cloud-sdk/resilience": "^3.21.0",
     "@sap/xssec": "^4.2.4"
   },
-  "_devDependencies": {
-    "@sap/cds-mtxs": "*",
-    "@cap-js/sqlite": "*"
-  },
-  "keywords": [],
   "cds": {
     "requires": {
       "kinds": {
