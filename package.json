@@ -24,7 +24,8 @@
     "@sap/cds-mtxs": "*",
     "@sap/xssec": "*",
     "@cap-js/sqlite": "*",
-    "@sap-cloud-sdk/resilience": "*"
+    "@sap-cloud-sdk/resilience": "*",
+    "@sap/hdi-deploy": "5.2.3"
   },
   "_devDependencies": {
     "@sap/hdi-deploy": "5.2.3"
