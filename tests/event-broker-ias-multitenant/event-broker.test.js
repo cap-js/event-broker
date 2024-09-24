@@ -48,7 +48,6 @@ jest.mock('https', () => {
 describe('event-broker service with ias auth', () => {
   const { POST } = cds.test()
   beforeAll(async () => {
-
     extSrv = await cds.connect.to('ExtSrv')
     ownSrv = await cds.connect.to('OwnSrv')
     messaging = await cds.connect.to('messaging')
