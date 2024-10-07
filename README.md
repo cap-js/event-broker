@@ -6,7 +6,7 @@
 
 ## About this project
 
-CDS plugin providing integration with SAP Event Broker.
+CDS plugin providing integration with SAP Cloud Application Event Hub (technical name: `event-broker`).
 
 
 
@@ -37,7 +37,7 @@ npm add @cap-js/event-broker
 
 Please follow the [guide on messaging](https://cap.cloud.sap/docs/guides/messaging/) to get an overview over the messaging concepts of CAP.
 
-You can create an SAP Event Broker service with the following configuration:
+You can create an SAP Cloud Application Event Hub service with the following configuration:
 
 ```jsonc
 {
