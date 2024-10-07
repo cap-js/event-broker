@@ -18,7 +18,7 @@
     "test": "npx jest --silent"
   },
   "peerDependencies": {
-    "@sap/cds": ">=7"
+    "@sap/cds": "*"
   },
   "devDependencies": {
     "@sap-cloud-sdk/resilience": "^3.21.0",
