@@ -326,12 +326,12 @@ class EventBroker extends cds.MessagingService {
       Object.assign(msg.headers, headers)
       if (this.isMultitenancy) msg.tenant = tenant
 
-      // for cds.context.http
-      msg._ = {}
-      msg._.req = req
-      msg._.res = res
+      // do not set cds.context.http
+      //msg._ = {}
+      //msg._.req = req
+      //msg._.res = res
 
-      const context = { user: cds.User.privileged, _: msg._ }
+      const context = { user: cds.User.privileged, /*_: msg._*/ }
       if (msg.tenant) context.tenant = msg.tenant
 
       await this.tx(context, tx => tx.emit(msg))
