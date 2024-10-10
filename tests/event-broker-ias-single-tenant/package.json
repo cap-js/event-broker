@@ -6,7 +6,8 @@
   "cds": {
     "requires": {
       "messaging": {
-        "kind": "event-broker"
+        "kind": "event-broker",
+        "outbox": false
       },
       "auth": {
         "kind": "ias",

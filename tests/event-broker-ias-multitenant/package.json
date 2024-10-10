@@ -1,13 +1,14 @@
 {
   "name": "event-broker-mock-app",
   "dependencies": {
-    "@cap-js/event-broker": ".."
+    "@cap-js/event-broker": "*"
   },
   "cds": {
     "requires": {
       "multitenancy": true,
       "messaging": {
-        "kind": "event-broker-internal"
+        "kind": "event-broker-internal",
+        "outbox": false
       },
       "auth": {
         "kind": "ias",
