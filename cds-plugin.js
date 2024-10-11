@@ -326,11 +326,16 @@ class EventBroker extends cds.MessagingService {
       Object.assign(msg.headers, headers)
       if (this.isMultitenancy) msg.tenant = tenant
 
-      const context = { user: cds.User.privileged }
+      msg._ = {}
+      msg._.req = req
+      msg._.res = res
+
+      const context = { user: cds.User.privileged, _: msg._ }
       if (msg.tenant) context.tenant = msg.tenant
 
+
       await this.tx(context, tx => {
-        delete cds.context.http.req.headers.authorization // potential destination lookup fails if IAS token is used
+        if (cds.context.http?.req?.headers?.authorization) delete cds.context.http.req.headers.authorization // potential destination lookup fails if IAS token is used
         return tx.emit(msg)
       })
 
