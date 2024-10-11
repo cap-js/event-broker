@@ -334,7 +334,10 @@ class EventBroker extends cds.MessagingService {
       const context = { user: cds.User.privileged, /*_: msg._*/ }
       if (msg.tenant) context.tenant = msg.tenant
 
-      await this.tx(context, tx => tx.emit(msg))
+      await this.tx(context, tx => {
+        delete cds.context.http.req.headers.authorization
+        return tx.emit(msg)
+      })
       this.LOG.debug('Event processed successfully.')
       return res.status(200).json({ message: 'OK' })
     } catch (e) {
