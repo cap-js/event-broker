@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
+## Version 0.1.1 - 2024-11-12
+
+### Added
+
+- Support for `@sap/cds` >= 8.5.0 (modified `ias-auth` middleware path)
+
 ## Version 0.1.0 - 2024-09-27
 
 ### Added
