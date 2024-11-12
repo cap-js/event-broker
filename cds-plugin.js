@@ -135,8 +135,6 @@ class EventBroker extends cds.MessagingService {
 
     this.auth = {} // { kind: 'cert', validationCert?, privateKey? } or { kind: 'ias', ias }
 
-    console.log('cds.env.requires:', cds.env.requires)
-
     // determine auth.kind
     if (this.options.x509) {
       if (!this.options.x509.cert && !this.options.x509.certPath)
@@ -156,8 +154,6 @@ class EventBroker extends cds.MessagingService {
         this.auth.ias = ias
       } else this.auth.kind = 'cert'
     }
-
-    console.log('this.auth:', this.auth)
 
     if (!this.auth.kind || (this.auth.kind === 'ias' && !this.auth.ias))
       throw new Error(`${this.name}: Event Broker requires your app to be bound to an IAS instance.`)
@@ -335,6 +331,7 @@ class EventBroker extends cds.MessagingService {
       Object.assign(msg.headers, headers)
       if (this.isMultitenancy) msg.tenant = tenant
 
+      // for cds.context.http
       msg._ = {}
       msg._.req = req
       msg._.res = res
@@ -342,12 +339,7 @@ class EventBroker extends cds.MessagingService {
       const context = { user: cds.User.privileged, _: msg._ }
       if (msg.tenant) context.tenant = msg.tenant
 
-
-      await this.tx(context, tx => {
-        if (cds.context.http?.req?.headers?.authorization) delete cds.context.http.req.headers.authorization // potential destination lookup fails if IAS token is used
-        return tx.emit(msg)
-      })
-
+      await this.tx(context, tx => tx.emit(msg))
       this.LOG.debug('Event processed successfully.')
       return res.status(200).json({ message: 'OK' })
     } catch (e) {
