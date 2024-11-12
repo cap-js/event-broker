@@ -285,7 +285,7 @@ class EventBroker extends cds.MessagingService {
       let ias_auth
       try {
         ias_auth = require('@sap/cds/lib/srv/middlewares/auth/ias-auth.js')
-      } catch(_e) {
+      } catch {
         ias_auth = require('@sap/cds/lib/auth/ias-auth') // fallback for older @sap/cds version
       }
       cds.app.use(webhookBasePath, cds.middlewares.context())
