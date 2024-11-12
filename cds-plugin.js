@@ -282,7 +282,12 @@ class EventBroker extends cds.MessagingService {
     usedWebhookEndpoints.add(webhookBasePath)
     // auth
     if (this.auth.kind === 'ias') {
-      const ias_auth = require('@sap/cds/lib/auth/ias-auth')
+      let ias_auth
+      try {
+        ias_auth = require('@sap/cds/lib/srv/middlewares/auth/ias-auth.js')
+      } catch {
+        ias_auth = require('@sap/cds/lib/auth/ias-auth') // fallback for older @sap/cds version
+      }
       cds.app.use(webhookBasePath, cds.middlewares.context())
       cds.app.use(webhookBasePath, ias_auth(this.auth.ias))
       cds.app.use(webhookBasePath, (err, _req, res, next) => {
