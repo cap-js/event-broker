@@ -1,6 +1,6 @@
 {
   "name": "@cap-js/event-broker",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "CDS plugin providing integration to SAP Event Broker",
   "repository": {
     "type": "git",
