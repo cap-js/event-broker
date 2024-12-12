@@ -83,7 +83,7 @@ function _validateCertificate(req, res, next) {
   const clientCert = clientCertObj.toLegacyObject()
 
   if (!this.isMultitenancy && !clientCertObj.checkPrivateKey(this.auth.privateKey))
-    return res.status(401).json({ message: 'Authentication Failed' })
+    return res.status(401).json({ message: 'Unauthorized' })
 
   const cfSubject = Buffer.from(req.headers['x-ssl-client-subject-cn'], 'base64').toString()
   if (
