@@ -65,15 +65,15 @@ async function request(options, data) {
 }
 
 function _validateCertificate(req, res, next) {
-  this.LOG.debug('event broker trying to authenticate via mTLS')
+  this.LOG._debug && this.LOG.debug('event broker trying to authenticate via mTLS')
 
   if (req.headers['x-ssl-client-verify'] !== '0') {
-    this.LOG.info('cf did not validate client certificate.')
+    this.LOG._debug && this.LOG.debug('cf did not validate client certificate.')
     return res.status(401).json({ message: 'Unauthorized' })
   }
 
   if (!req.headers['x-forwarded-client-cert']) {
-    this.LOG.info('no certificate in xfcc header.')
+    this.LOG._debug && this.LOG.debug('no certificate in xfcc header.')
     return res.status(401).json({ message: 'Unauthorized' })
   }
 
@@ -90,34 +90,34 @@ function _validateCertificate(req, res, next) {
     this.auth.validationCert.subject.CN !== clientCert.subject.CN ||
     this.auth.validationCert.subject.CN !== cfSubject
   ) {
-    this.LOG.info('certificate subject does not match')
+    this.LOG._debug && this.LOG.debug('certificate subject does not match')
     return res.status(401).json({ message: 'Unauthorized' })
   }
-  this.LOG.debug('incoming Subject CN is valid.')
+  this.LOG._debug && this.LOG.debug('incoming Subject CN is valid.')
 
   if (this.auth.validationCert.issuer.CN !== clientCert.issuer.CN) {
-    this.LOG.info('Certificate issuer subject does not match')
+    this.LOG._debug && this.LOG.debug('Certificate issuer subject does not match')
     return res.status(401).json({ message: 'Unauthorized' })
   }
-  this.LOG.debug('incoming issuer subject CN is valid.')
+  this.LOG._debug && this.LOG.debug('incoming issuer subject CN is valid.')
 
   if (this.auth.validationCert.issuer.O !== clientCert.issuer.O) {
-    this.LOG.info('Certificate issuer org does not match')
+    this.LOG._debug && this.LOG.debug('Certificate issuer org does not match')
     return res.status(401).json({ message: 'Unauthorized' })
   }
-  this.LOG.debug('incoming Issuer Org is valid.')
+  this.LOG._debug && this.LOG.debug('incoming Issuer Org is valid.')
 
   if (this.auth.validationCert.issuer.OU !== clientCert.issuer.OU) {
-    this.LOG.info('certificate issuer OU does not match')
+    this.LOG._debug && this.LOG.debug('certificate issuer OU does not match')
     return res.status(401).json({ message: 'Unauthorized' })
   }
-  this.LOG.debug('certificate issuer OU is valid.')
+  this.LOG._debug && this.LOG.debug('certificate issuer OU is valid.')
 
   const valid_from = new Date(clientCert.valid_from)
   const valid_to = new Date(clientCert.valid_to)
   const now = new Date(Date.now())
   if (valid_from <= now && valid_to >= now) {
-    this.LOG.debug('certificate validation completed')
+    this.LOG._debug && this.LOG.debug('certificate validation completed')
     next()
   } else {
     this.LOG.error('Certificate expired')
@@ -249,15 +249,13 @@ class EventBroker extends cds.MessagingService {
         },
         agent: this.agent
       }
-      if (this.LOG._debug) {
-        this.LOG.debug('HTTP headers:', JSON.stringify(options.headers))
-        this.LOG.debug('HTTP body:', JSON.stringify(msg.data))
-      }
+      this.LOG._debug && this.LOG.debug('HTTP headers:', JSON.stringify(options.headers))
+      this.LOG._debug && this.LOG.debug('HTTP body:', JSON.stringify(msg.data))
       // what about headers?
       // TODO: Clarify if we should send `{ data, ...headers }` vs.  `data` + HTTP headers (`ce-*`)
       //       Disadvantage with `data` + HTTP headers is that they're case insensitive -> information loss, but they're 'closer' to the cloudevents standard
       await request(options, { data: msg.data, ...headers }) // TODO: fetch does not work with mTLS as of today, requires another module. see https://github.com/nodejs/node/issues/48977
-      if (this.LOG._info) this.LOG.info('Emit', { topic: msg.event })
+      this.LOG.info('Emit', { topic: msg.event })
     } catch (e) {
       this.LOG.error('Emit failed:', e.message)
       throw e
@@ -340,7 +338,7 @@ class EventBroker extends cds.MessagingService {
       if (msg.tenant) context.tenant = msg.tenant
 
       await this.tx(context, tx => tx.emit(msg))
-      this.LOG.debug('Event processed successfully.')
+      this.LOG._debug && this.LOG.debug('Event processed successfully.')
       return res.status(200).json({ message: 'OK' })
     } catch (e) {
       this.LOG.error('ERROR during inbound event processing:', e)
