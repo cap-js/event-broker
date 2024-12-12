@@ -69,12 +69,12 @@ function _validateCertificate(req, res, next) {
 
   if (req.headers['x-ssl-client-verify'] !== '0') {
     this.LOG.info('cf did not validate client certificate.')
-    return res.status(401).json({ message: 'Authentication Failed' })
+    return res.status(401).json({ message: 'Unauthorized' })
   }
 
   if (!req.headers['x-forwarded-client-cert']) {
     this.LOG.info('no certificate in xfcc header.')
-    return res.status(401).json({ message: 'Authentication Failed' })
+    return res.status(401).json({ message: 'Unauthorized' })
   }
 
   const clientCertObj = new crypto.X509Certificate(
@@ -91,25 +91,25 @@ function _validateCertificate(req, res, next) {
     this.auth.validationCert.subject.CN !== cfSubject
   ) {
     this.LOG.info('certificate subject does not match')
-    return res.status(401).json({ message: 'Authentication Failed' })
+    return res.status(401).json({ message: 'Unauthorized' })
   }
   this.LOG.debug('incoming Subject CN is valid.')
 
   if (this.auth.validationCert.issuer.CN !== clientCert.issuer.CN) {
     this.LOG.info('Certificate issuer subject does not match')
-    return res.status(401).json({ message: 'Authentication Failed' })
+    return res.status(401).json({ message: 'Unauthorized' })
   }
   this.LOG.debug('incoming issuer subject CN is valid.')
 
   if (this.auth.validationCert.issuer.O !== clientCert.issuer.O) {
     this.LOG.info('Certificate issuer org does not match')
-    return res.status(401).json({ message: 'Authentication Failed' })
+    return res.status(401).json({ message: 'Unauthorized' })
   }
   this.LOG.debug('incoming Issuer Org is valid.')
 
   if (this.auth.validationCert.issuer.OU !== clientCert.issuer.OU) {
     this.LOG.info('certificate issuer OU does not match')
-    return res.status(401).json({ message: 'Authentication Failed' })
+    return res.status(401).json({ message: 'Unauthorized' })
   }
   this.LOG.debug('certificate issuer OU is valid.')
 
@@ -121,7 +121,7 @@ function _validateCertificate(req, res, next) {
     next()
   } else {
     this.LOG.error('Certificate expired')
-    return res.status(401).json({ message: 'Authentication Failed' })
+    return res.status(401).json({ message: 'Unauthorized' })
   }
 }
 
