@@ -69,12 +69,12 @@ function _validateCertificate(req, res, next) {
 
   if (req.headers['x-ssl-client-verify'] !== '0') {
     this.LOG.info('cf did not validate client certificate.')
-    return res.status(401).json({ message: 'Authentication Failed' })
+    return res.status(401).json({ message: 'Unauthorized' })
   }
 
   if (!req.headers['x-forwarded-client-cert']) {
     this.LOG.info('no certificate in xfcc header.')
-    return res.status(401).json({ message: 'Authentication Failed' })
+    return res.status(401).json({ message: 'Unauthorized' })
   }
 
   const clientCertObj = new crypto.X509Certificate(
@@ -83,7 +83,7 @@ function _validateCertificate(req, res, next) {
   const clientCert = clientCertObj.toLegacyObject()
 
   if (!this.isMultitenancy && !clientCertObj.checkPrivateKey(this.auth.privateKey))
-    return res.status(401).josn({ message: 'Authentication Failed' })
+    return res.status(401).json({ message: 'Unauthorized' })
 
   const cfSubject = Buffer.from(req.headers['x-ssl-client-subject-cn'], 'base64').toString()
   if (
@@ -91,25 +91,25 @@ function _validateCertificate(req, res, next) {
     this.auth.validationCert.subject.CN !== cfSubject
   ) {
     this.LOG.info('certificate subject does not match')
-    return res.status(401).json({ message: 'Authentication Failed' })
+    return res.status(401).json({ message: 'Unauthorized' })
   }
   this.LOG.debug('incoming Subject CN is valid.')
 
   if (this.auth.validationCert.issuer.CN !== clientCert.issuer.CN) {
     this.LOG.info('Certificate issuer subject does not match')
-    return res.status(401).json({ message: 'Authentication Failed' })
+    return res.status(401).json({ message: 'Unauthorized' })
   }
   this.LOG.debug('incoming issuer subject CN is valid.')
 
   if (this.auth.validationCert.issuer.O !== clientCert.issuer.O) {
     this.LOG.info('Certificate issuer org does not match')
-    return res.status(401).json({ message: 'Authentication Failed' })
+    return res.status(401).json({ message: 'Unauthorized' })
   }
   this.LOG.debug('incoming Issuer Org is valid.')
 
   if (this.auth.validationCert.issuer.OU !== clientCert.issuer.OU) {
     this.LOG.info('certificate issuer OU does not match')
-    return res.status(401).json({ message: 'Authentication Failed' })
+    return res.status(401).json({ message: 'Unauthorized' })
   }
   this.LOG.debug('certificate issuer OU is valid.')
 
@@ -121,7 +121,7 @@ function _validateCertificate(req, res, next) {
     next()
   } else {
     this.LOG.error('Certificate expired')
-    return res.status(401).json({ message: 'Authentication Failed' })
+    return res.status(401).json({ message: 'Unauthorized' })
   }
 }
 
@@ -291,7 +291,7 @@ class EventBroker extends cds.MessagingService {
       cds.app.use(webhookBasePath, cds.middlewares.context())
       cds.app.use(webhookBasePath, ias_auth(this.auth.ias))
       cds.app.use(webhookBasePath, (err, _req, res, next) => {
-        if (err.code === 401) return res.status(401).json({ message: 'Unauthorized' })
+        if (err == 401 || err.code == 401) return res.status(401).json({ message: 'Unauthorized' })
         return next(err)
       })
       cds.app.use(webhookBasePath, (_req, res, next) => {
