@@ -291,7 +291,7 @@ class EventBroker extends cds.MessagingService {
       cds.app.use(webhookBasePath, cds.middlewares.context())
       cds.app.use(webhookBasePath, ias_auth(this.auth.ias))
       cds.app.use(webhookBasePath, (err, _req, res, next) => {
-        if (err.code === 401) return res.status(401).json({ message: 'Unauthorized' })
+        if (err == 401 || err.code == 401) return res.status(401).json({ message: 'Unauthorized' })
         return next(err)
       })
       cds.app.use(webhookBasePath, (_req, res, next) => {
