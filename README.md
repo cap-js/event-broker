@@ -23,7 +23,8 @@ CDS plugin providing integration with SAP Cloud Application Event Hub (technical
 
 ## Requirements
 
-See [Getting Started](https://cap.cloud.sap/docs/get-started/in-a-nutshell) on how to jumpstart your development and grow as you go with SAP Cloud Application Programming Model.
+See [Getting Started](https://cap.cloud.sap/docs/get-started/in-a-nutshell) on how to jumpstart your development and grow as you go with SAP Cloud Application Programming Model (CAP).
+To learn about messaging in CAP, please consult the guide on [Events & Messaging](https://cap.cloud.sap/docs/guides/messaging/).
 
 
 
@@ -35,23 +36,36 @@ Install the plugin via:
 npm add @cap-js/event-broker
 ```
 
-Please follow the [guide on messaging](https://cap.cloud.sap/docs/guides/messaging/) to get an overview over the messaging concepts of CAP.
-
-You can create an SAP Cloud Application Event Hub service with the following configuration:
+Then, set the `kind` of your messaging service to `event-broker`:
 
 ```jsonc
-{
-  "cds": {
-    "requires": {
-      "messaging": {
-        "kind": "event-broker"
+"cds": {
+  "requires": {
+    "messaging": {
+      "kind": "event-broker"
+    }
+  }
+}
+```
+
+The [CloudEvents](https://cloudevents.io/) format is enforced since it is required by SAP Cloud Application Event Hub.
+
+Authentication in the SAP Cloud Application Event Hub integration is based on the [Identity Authentication service (IAS)](https://help.sap.com/docs/cloud-identity-services/cloud-identity-services/getting-started-with-identity-service-of-sap-btp) of [SAP Cloud Identity Services](https://help.sap.com/docs/cloud-identity-services).
+If you are not using [IAS-based Authentication](https://cap.cloud.sap/docs/node.js/authentication#ias), you will need to trigger the loading of the IAS credentials into your app's `cds.env` via an additional `requires` entry:
+
+```jsonc
+"cds": {
+  "requires": {
+    "ias": { // any name
+      "vcap": {
+        "label": "identity"
       }
     }
   }
 }
 ```
 
-For more details, please refer to the [messaging section](https://cap.cloud.sap/docs/node.js/messaging) of the CAP Node.js documentation.
+For more information, please see [SAP Cloud Application Event Hub](https://help.sap.com/docs/sap-cloud-application-event-hub) in SAP Help Portal.
 
 
 
