@@ -74,6 +74,7 @@ web_modules/
 
 # dotenv environment variable files
 .env
+!test/event-broker-x509-multitenant/.env
 .env.development.local
 .env.test.local
 .env.production.local
@@ -131,6 +132,7 @@ dist
 
 # custom
 package-lock.json
+!test/event-broker-ias-multitenant/package-lock.json
 .npmrc
 .babelrc
 .prettierrc.js
