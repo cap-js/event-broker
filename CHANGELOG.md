@@ -8,7 +8,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
 ### Added
 
-- Support for inboxing incoming messages
+- Prerequisite for inboxing incoming messages
 
 ## Version 0.1.2 - 2024-12-12
 
