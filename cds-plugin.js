@@ -1,4 +1,6 @@
 const cds = require('@sap/cds')
+const CDS_8 = cds.version.split('.')[0] < 9
+
 const express = require('express')
 const https = require('https')
 const crypto = require('crypto')
@@ -25,11 +27,8 @@ const normalizeIncomingMessage = message => {
     headers = {}
   }
 
-  return {
-    data,
-    headers,
-    inbound: true
-  }
+  if (CDS_8) return { data, headers, inbound: true }
+  return { data, headers }
 }
 
 const usedWebhookEndpoints = new Set()
@@ -337,7 +336,8 @@ class EventBroker extends cds.MessagingService {
       const context = { user: cds.User.privileged, _: msg._ }
       if (msg.tenant) context.tenant = msg.tenant
 
-      await this.tx(context, tx => tx.emit(msg))
+      if (CDS_8) await this.tx(context, tx => tx.emit(msg))
+      else await this.processInboundMsg(context, msg)
       this.LOG._debug && this.LOG.debug('Event processed successfully.')
       return res.status(200).json({ message: 'OK' })
     } catch (e) {
