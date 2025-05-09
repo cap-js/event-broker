@@ -21,6 +21,7 @@
     "@sap/cds": ">=8"
   },
   "devDependencies": {
+    "@cap-js/sqlite": "^1",
     "@cap-js/event-broker": "file:.",
     "@sap-cloud-sdk/resilience": "^4.0.0",
     "@sap/xssec": "^4.2.4"
