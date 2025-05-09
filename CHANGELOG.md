@@ -8,7 +8,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
 ### Added
 
-- Prerequisite for inboxing incoming messages
+- Prerequisite for inboxing incoming messages in `@sap/cds^9`
 
 ## Version 0.1.2 - 2024-12-12
 
