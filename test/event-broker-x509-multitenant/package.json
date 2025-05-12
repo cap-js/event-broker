@@ -8,7 +8,7 @@
       "multitenancy": true,
       "messaging": {
         "kind": "event-broker-internal",
-        "outbox": false,
+        "outboxed": false,
         "x509": {
           "cert": "$myCert",
           "pkey": "$myPkey"

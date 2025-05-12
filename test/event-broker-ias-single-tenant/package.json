@@ -7,7 +7,7 @@
     "requires": {
       "messaging": {
         "kind": "event-broker",
-        "outbox": false
+        "outboxed": false
       },
       "auth": {
         "kind": "ias",
