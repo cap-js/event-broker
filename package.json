@@ -22,6 +22,7 @@
   },
   "devDependencies": {
     "@cap-js/event-broker": "file:.",
+    "@cap-js/cds-test": ">=0",
     "@sap-cloud-sdk/resilience": "^4.0.0",
     "@sap/xssec": "^4.2.4"
   },
