@@ -8,7 +8,7 @@
       "multitenancy": true,
       "messaging": {
         "kind": "event-broker-internal",
-        "outboxed": false
+        "outbox": false
       },
       "auth": {
         "kind": "ias",

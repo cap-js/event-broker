@@ -31,7 +31,7 @@
         "event-broker": {
           "impl": "@cap-js/event-broker",
           "format": "cloudevents",
-          "outboxed": true,
+          "outbox": true,
           "webhookPath": "/-/cds/event-broker/webhook",
           "vcap": {
             "label": "event-broker"
