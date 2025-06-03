@@ -105,14 +105,14 @@ describe('event-broker service with ias auth', () => {
   test('request without JWT token', async () => {
     await expect(POST(`/-/cds/event-broker/webhook`)).rejects.toHaveProperty(
       'message',
-      '401 - Request failed with status code 401'
+      expect.stringMatching('Request failed with status code 401')
     )
   })
 
   test('request with invalid JWT token', async () => {
     await expect(
       POST(`/-/cds/event-broker/webhook`, { some: 'data' }, { headers: { Authorization: 'Bearer invalidtoken' } })
-    ).rejects.toHaveProperty('message', '401 - Request failed with status code 401')
+    ).rejects.toHaveProperty('message', expect.stringMatching('Request failed with status code 401'))
   })
 
   test('Event broker mock event - messaging service ', done => {
