@@ -6,7 +6,7 @@ class IdentityService {
 }
 
 class ValidationError extends Error {
-  constructor(message) {
+  constructor(message = 'Invalid token') {
     super(message)
     this.name = 'ValidationError'
   }
@@ -14,9 +14,8 @@ class ValidationError extends Error {
 
 module.exports = {
   v3: 'dummy',
-  createSecurityContext(authService, contextConfig) {
-    let { req } = contextConfig
-    contextConfig.jwt ??= req?.headers?.authorization?.split(' ')[1]
+  createSecurityContext(_, contextConfig) {
+    contextConfig.jwt ??= contextConfig.req?.headers?.authorization?.split(' ')[1]
     if (contextConfig.jwt !== 'dummyToken') throw new ValidationError()
     const tokenInfoObj = { sub: 'eb-client-id', azp: 'eb-client-id' }
     const dummyTokenInfo = {
