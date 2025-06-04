@@ -14,18 +14,10 @@ class ValidationError extends Error {
 
 module.exports = {
   v3: 'dummy',
-  createSecurityContext(authService, contextConfig, _, cb) {
+  createSecurityContext(authService, contextConfig) {
     let { req } = contextConfig
     contextConfig.jwt ??= req?.headers?.authorization?.split(' ')[1]
-    if (contextConfig.jwt !== 'dummyToken') {
-      // if (cb) return cb(new ValidationError('Invalid token'))
-      // if (cb) {
-      //   debugger
-      //   return cb(null, null, null)
-      // }
-      throw new ValidationError()
-    }
-
+    if (contextConfig.jwt !== 'dummyToken') throw new ValidationError()
     const tokenInfoObj = { sub: 'eb-client-id', azp: 'eb-client-id' }
     const dummyTokenInfo = {
       getPayload: () => tokenInfoObj,
