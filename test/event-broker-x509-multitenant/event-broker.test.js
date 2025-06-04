@@ -102,7 +102,7 @@ describe('event-broker service', () => {
   test('request without client cert', async () => {
     await expect(POST(`/-/cds/event-broker/webhook`)).rejects.toHaveProperty(
       'message',
-      'Request failed with status code 401'
+      expect.stringMatching('Request failed with status code 401')
     )
   })
 

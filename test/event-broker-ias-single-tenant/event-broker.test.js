@@ -4,21 +4,6 @@ const DATA = { key1: 1, value1: 1 }
 const HEADERS = { keyHeader1: 1, valueHeader1: 1 }
 let messaging, ownSrv, extSrv, credentials
 
-jest.mock('@sap/xssec', () => ({
-  createSecurityContext(token, _credentials, id, cb) {
-    if (token !== 'dummyToken') return cb(null, null, null)
-    const dummyContext = {}
-    const tokenInfoObj = { sub: 'eb-client-id', azp: 'eb-client-id' }
-    const dummyTokenInfo = {
-      getPayload: () => tokenInfoObj,
-      getClientId: () => 'eb-client-id',
-      getZoneId: () => 'dummyZoneId',
-      ...tokenInfoObj
-    }
-    return cb(null, dummyContext, dummyTokenInfo)
-  }
-}))
-
 const mockHttps = {
   handleHttpReq: () => {
     throw new Error('must be implemented by test')
@@ -89,14 +74,14 @@ describe('event-broker service with ias auth for single tenant scenario', () => 
   test('request without JWT token', async () => {
     await expect(POST(`/-/cds/event-broker/webhook`)).rejects.toHaveProperty(
       'message',
-      'Request failed with status code 401'
+      expect.stringMatching('Request failed with status code 401')
     )
   })
 
   test('request with invalid JWT token', async () => {
     await expect(
       POST(`/-/cds/event-broker/webhook`, { some: 'data' }, { headers: { Authorization: 'Bearer invalidtoken' } })
-    ).rejects.toHaveProperty('message', 'Request failed with status code 401')
+    ).rejects.toHaveProperty('message', expect.stringMatching('Request failed with status code 401'))
   })
 
   test('Event broker mock event - messaging service ', done => {
