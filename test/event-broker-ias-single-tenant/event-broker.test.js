@@ -50,7 +50,7 @@ describe('event-broker service with ias auth for single tenant scenario', () => 
     }
     cds.context = { tenant: 'btpSystemId', user: cds.User.privileged }
     
-      await ownSrv.emit('created', { data: 'testdata', headers: { some: 'headers' } })
+    await ownSrv.emit('created', { data: 'testdata', headers: { some: 'headers' } })
     expect(mockHttps.request).toHaveBeenCalledTimes(1)
     expect(mockHttps.request).toHaveBeenCalledWith(
       {
