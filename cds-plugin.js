@@ -175,17 +175,17 @@ class EventBroker extends cds.MessagingService {
     return (this.__agentCache ??=
       this.auth.kind === 'ias'
         ? new https.Agent({
-            cert: this.auth.ias.credentials.certificate,
-            key: this.auth.ias.credentials.key
-          })
+          cert: this.auth.ias.credentials.certificate,
+          key: this.auth.ias.credentials.key
+        })
         : new https.Agent({
-            cert:
-              this.options.x509.cert ??
-              cds.utils.fs.readFileSync(cds.utils.path.resolve(cds.root, this.options.x509.certPath)),
-            key:
-              this.options.x509.pkey ??
-              cds.utils.fs.readFileSync(cds.utils.path.resolve(cds.root, this.options.x509.pkeyPath))
-          }))
+          cert:
+            this.options.x509.cert ??
+            cds.utils.fs.readFileSync(cds.utils.path.resolve(cds.root, this.options.x509.certPath)),
+          key:
+            this.options.x509.pkey ??
+            cds.utils.fs.readFileSync(cds.utils.path.resolve(cds.root, this.options.x509.pkeyPath))
+        }))
   }
 
   async handle(msg) {
@@ -193,13 +193,10 @@ class EventBroker extends cds.MessagingService {
     if (!this.options.credentials) throw new Error(`${this.name}: No credentials found for Event Broker service.`)
     if (!this.options.credentials.ceSource)
       throw new Error(`${this.name}: Emitting events is not supported by Event Broker plan \`event-connectivity\`.`)
-    
-    const _msg = this.message4(msg)
-    
-    // Determine if we should add the xsapcomplianteventspec header based on systemId
-    const shouldAddComplianceHeader = !!this.options.credentials.systemId
 
-    await this.emitToEventBroker(_msg, shouldAddComplianceHeader)
+    const _msg = this.message4(msg)
+
+    await this.emitToEventBroker(_msg)
   }
 
   startListening() {
@@ -207,7 +204,7 @@ class EventBroker extends cds.MessagingService {
     this.registerWebhookEndpoints()
   }
 
-  async emitToEventBroker(msg, addComplianceHeader = false) {
+  async emitToEventBroker(msg) {
     // TODO: CSN definition probably not needed, just in case...
     //   See if there's a CSN entry for that event
     //   const found = cds?.model.definitions[topicOrEvent]
@@ -254,10 +251,11 @@ class EventBroker extends cds.MessagingService {
         agent: this.agent
       }
 
-      // Add ce-xsapcomplianteventspec header when systemId is present
-      if (addComplianceHeader) {
+      // Add ce-xsapcomplianteventspec header based on the messaging configuration
+      if (this.options['sap-compliant-event']) {
         options.headers['ce-xsapcomplianteventspec'] = true
       }
+
       this.LOG._debug && this.LOG.debug('HTTP headers:', JSON.stringify(options.headers))
       this.LOG._debug && this.LOG.debug('HTTP body:', JSON.stringify(msg.data))
       // what about headers?
@@ -275,7 +273,8 @@ class EventBroker extends cds.MessagingService {
     if (!('source' in headers)) {
       if (!this.options.credentials.ceSource)
         throw new Error(`${this.name}: Cannot emit event: Parameter \`ceSource\` not found in Event Broker binding.`)
-      headers.source = `${this.options.credentials.ceSource[0]}/${cds.context.tenant}`
+      const systemId = cds.context.tenant ? cds.context.tenant : this.options.credentials.systemId
+      headers.source = `${this.options.credentials.ceSource[0]}/${systemId}`
     }
     super.prepareHeaders(headers, event)
   }

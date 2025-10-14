@@ -7,6 +7,7 @@
     "requires": {
       "messaging": {
         "kind": "event-broker",
+        "sap-compliant-event": true,
         "outbox": false
       },
       "auth": {
