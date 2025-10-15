@@ -1,6 +1,5 @@
 const cds = require('@sap/cds')
 jest.useFakeTimers()
-jest.mock('@sap/xssec', () => require('../__mocks__/xssec.js'))
 cds.test.in(__dirname)
 const DATA = { key1: 1, value1: 1 }
 const HEADERS = { keyHeader1: 1, valueHeader1: 1 }
