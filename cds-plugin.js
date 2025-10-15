@@ -193,9 +193,7 @@ class EventBroker extends cds.MessagingService {
     if (!this.options.credentials) throw new Error(`${this.name}: No credentials found for Event Broker service.`)
     if (!this.options.credentials.ceSource)
       throw new Error(`${this.name}: Emitting events is not supported by Event Broker plan \`event-connectivity\`.`)
-
     const _msg = this.message4(msg)
-
     await this.emitToEventBroker(_msg)
   }
 

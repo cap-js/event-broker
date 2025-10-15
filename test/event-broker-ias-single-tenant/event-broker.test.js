@@ -1,4 +1,6 @@
 const cds = require('@sap/cds')
+jest.useFakeTimers()
+jest.mock('@sap/xssec', () => require('../__mocks__/xssec.js'))
 cds.test.in(__dirname)
 const DATA = { key1: 1, value1: 1 }
 const HEADERS = { keyHeader1: 1, valueHeader1: 1 }
@@ -17,7 +19,7 @@ const mockHttps = {
     cb(res)
 
     return {
-      on() {},
+      on() { },
       write(data) {
         res.emit('data', Buffer.from(JSON.stringify(mockHttps.handleHttpReq(data))))
         res.emit('end')
@@ -43,13 +45,18 @@ describe('event-broker service with ias auth for single tenant scenario', () => 
     mockHttps.request.mockClear()
     messaging.options.credentials = credentials
   })
+  afterAll(async () => {
+    jest.clearAllTimers()
+    jest.useRealTimers()
+    await cds.shutdown()
+  })
 
   test('emit from app service', async () => {
     mockHttps.handleHttpReq = () => {
       return { message: 'ok' }
     }
     cds.context = { tenant: 'btpSystemId', user: cds.User.privileged }
-    
+
     await ownSrv.emit('created', { data: 'testdata', headers: { some: 'headers' } })
     expect(mockHttps.request).toHaveBeenCalledTimes(1)
     expect(mockHttps.request).toHaveBeenCalledWith(
@@ -57,12 +64,12 @@ describe('event-broker service with ias auth for single tenant scenario', () => 
         hostname: 'eb-url.com',
         method: 'POST',
         headers: {
-          'ce-xsapcomplianteventspec': true,
           'ce-id': expect.anything(),
           'ce-source': '/default/cap.test/btpSystemId',
           'ce-type': 'cap.test.object.created.v1',
           'ce-specversion': '1.0',
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'ce-xsapcomplianteventspec': true,
         },
         agent: messaging.agent
       },
@@ -113,7 +120,7 @@ describe('event-broker service with ias auth for single tenant scenario', () => 
     })
     const headers = {
       'ce-type': 'cap.test.object.changed.v1',
-      'ce-sapconsumertenant': 't2', // must be ignored
+      'ce-sapconsumertenant': 't2',
       Authorization: 'Bearer dummyToken'
     }
     POST(`/-/cds/event-broker/webhook`, { data: DATA, ...HEADERS }, { headers })
