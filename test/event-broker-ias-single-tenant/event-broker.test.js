@@ -1,5 +1,5 @@
 const cds = require('@sap/cds')
-jest.useFakeTimers()
+jest.useFakeTimers() // Mock all timers including setInterval
 cds.test.in(__dirname)
 const DATA = { key1: 1, value1: 1 }
 const HEADERS = { keyHeader1: 1, valueHeader1: 1 }
@@ -64,7 +64,7 @@ describe('event-broker service with ias auth for single tenant scenario', () => 
         method: 'POST',
         headers: {
           'ce-id': expect.anything(),
-          'ce-source': '/default/cap.test/btpSystemId',
+          'ce-source': '/default/cap.test/321',
           'ce-type': 'cap.test.object.created.v1',
           'ce-specversion': '1.0',
           'Content-Type': 'application/json',
