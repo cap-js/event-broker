@@ -191,8 +191,6 @@ class EventBroker extends cds.MessagingService {
   async handle(msg) {
     if (msg.inbound) return super.handle(msg)
     if (!this.options.credentials) throw new Error(`${this.name}: No credentials found for Event Broker service.`)
-    if (!this.options.credentials.ceSource)
-      throw new Error(`${this.name}: Emitting events is not supported by Event Broker plan \`event-connectivity\`.`)
     const _msg = this.message4(msg)
     await this.emitToEventBroker(_msg)
   }
@@ -269,8 +267,6 @@ class EventBroker extends cds.MessagingService {
 
   prepareHeaders(headers, event) {
     if (!('source' in headers)) {
-      if (!this.options.credentials.ceSource)
-        throw new Error(`${this.name}: Cannot emit event: Parameter \`ceSource\` not found in Event Broker binding.`)
       const systemId = cds.context.tenant ? cds.context.tenant : this.options.credentials.systemId
       headers.source = `${this.options.credentials.ceSource[0]}/${systemId}`
     }
