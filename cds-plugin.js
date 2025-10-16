@@ -249,11 +249,6 @@ class EventBroker extends cds.MessagingService {
         agent: this.agent
       }
 
-      // Add ce-xsapcomplianteventspec header based on the messaging configuration
-      if (this.options['sap-compliant-event']) {
-        options.headers['ce-xsapcomplianteventspec'] = true
-      }
-
       this.LOG._debug && this.LOG.debug('HTTP headers:', JSON.stringify(options.headers))
       this.LOG._debug && this.LOG.debug('HTTP body:', JSON.stringify(msg.data))
       // what about headers?

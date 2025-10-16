@@ -5,13 +5,6 @@ module.exports = async () => {
   const messaging = await cds.connect.to('messaging')
   messaging.on('someEvent', () => { })
 
-  // Debug: Check CDS environment
-  console.log('CDS requires.messaging:', JSON.stringify(cds.env.requires.messaging, null, 2));
-  console.log('VCAP_SERVICES keys:', Object.keys(process.env.CAP_SERVICES ? JSON.parse(process.env.CAP_SERVICES) : 0));
-  // Debug: Check the messaging service configuration
-  console.log('Messaging service options:', JSON.stringify(messaging.options, null, 2));
-  console.log('Messaging service credentials:', messaging.options?.credentials ? "Found" : "NOT FOUND");
-
   setInterval(async () => {
     let eventType = "ns.fh.employee.feedbackCollector-create.v1"
 

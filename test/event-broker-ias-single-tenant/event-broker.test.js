@@ -68,7 +68,6 @@ describe('event-broker service with ias auth for single tenant scenario', () => 
           'ce-type': 'cap.test.object.created.v1',
           'ce-specversion': '1.0',
           'Content-Type': 'application/json',
-          'ce-xsapcomplianteventspec': true,
         },
         agent: messaging.agent
       },
