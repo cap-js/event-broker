@@ -1,5 +1,4 @@
 const cds = require('@sap/cds')
-jest.useFakeTimers() // Mock all timers including setInterval
 cds.test.in(__dirname)
 const DATA = { key1: 1, value1: 1 }
 const HEADERS = { keyHeader1: 1, valueHeader1: 1 }
@@ -43,11 +42,6 @@ describe('event-broker service with ias auth for single tenant scenario', () => 
   beforeEach(() => {
     mockHttps.request.mockClear()
     messaging.options.credentials = credentials
-  })
-  afterAll(async () => {
-    jest.clearAllTimers()
-    jest.useRealTimers()
-    await cds.shutdown()
   })
 
   test('emit from app service', async () => {
