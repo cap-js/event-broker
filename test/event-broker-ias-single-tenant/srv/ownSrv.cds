@@ -6,5 +6,5 @@ service OwnSrv {
         name : String;
   }
 
-  action triggerEvent() returns String;
+  action triggerEvent();
 }
