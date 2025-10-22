@@ -175,17 +175,17 @@ class EventBroker extends cds.MessagingService {
     return (this.__agentCache ??=
       this.auth.kind === 'ias'
         ? new https.Agent({
-            cert: this.auth.ias.credentials.certificate,
-            key: this.auth.ias.credentials.key
-          })
+          cert: this.auth.ias.credentials.certificate,
+          key: this.auth.ias.credentials.key
+        })
         : new https.Agent({
-            cert:
-              this.options.x509.cert ??
-              cds.utils.fs.readFileSync(cds.utils.path.resolve(cds.root, this.options.x509.certPath)),
-            key:
-              this.options.x509.pkey ??
-              cds.utils.fs.readFileSync(cds.utils.path.resolve(cds.root, this.options.x509.pkeyPath))
-          }))
+          cert:
+            this.options.x509.cert ??
+            cds.utils.fs.readFileSync(cds.utils.path.resolve(cds.root, this.options.x509.certPath)),
+          key:
+            this.options.x509.pkey ??
+            cds.utils.fs.readFileSync(cds.utils.path.resolve(cds.root, this.options.x509.pkeyPath))
+        }))
   }
 
   async handle(msg) {
@@ -248,6 +248,7 @@ class EventBroker extends cds.MessagingService {
         },
         agent: this.agent
       }
+
       this.LOG._debug && this.LOG.debug('HTTP headers:', JSON.stringify(options.headers))
       this.LOG._debug && this.LOG.debug('HTTP body:', JSON.stringify(msg.data))
       // what about headers?
@@ -265,7 +266,9 @@ class EventBroker extends cds.MessagingService {
     if (!('source' in headers)) {
       if (!this.options.credentials.ceSource)
         throw new Error(`${this.name}: Cannot emit event: Parameter \`ceSource\` not found in Event Broker binding.`)
-      headers.source = `${this.options.credentials.ceSource[0]}/${cds.context.tenant}`
+      // where the systemId will be blank for the MT plan service instance binding and contain the value of the global account id for the EC Plan
+      const systemId = this.options.credentials.systemId ? this.options.credentials.systemId : cds.context.tenant
+      headers.source = `${this.options.credentials.ceSource[0]}/${systemId}`
     }
     super.prepareHeaders(headers, event)
   }
