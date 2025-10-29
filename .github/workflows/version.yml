@@ -29,6 +29,3 @@ jobs:
           # - "feat" or "minor" → minor bump (1.0.0 → 1.1.0)
           # - Other changes → patch bump (1.0.0 → 1.0.1)
           default: minor
-        env:
-          # Provide GitHub token for pushing changes and creating tags
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
