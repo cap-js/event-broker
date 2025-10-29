@@ -1,0 +1,21 @@
+name: Version Bump
+
+on:
+  push:
+    branches:
+      - master
+
+permissions:
+  contents: write
+
+jobs:
+  bump-version:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Automated Version Bump
+        uses: rimonhanna/gh-action-bump-version@master
+        with:
+          tag-prefix: ''
+          default: minor
