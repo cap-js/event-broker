@@ -1,0 +1,31 @@
+# GitHub Actions workflow for automated version bumping
+name: Version Bump
+
+# Trigger this workflow when code is pushed to the main branch
+on:
+  push:
+    branches:
+      - main
+
+# Grant write permissions to modify repository contents (create tags, update files)
+permissions:
+  contents: write
+
+jobs:
+  bump-version:
+    runs-on: ubuntu-latest
+    steps:
+      # Checkout the repository code to access package.json and commit history
+      - uses: actions/checkout@v3
+
+      # Automatically bump version based on commit messages and update package.json
+      - name: Automated Version Bump
+        uses: rimonhanna/gh-action-bump-version@v8.0.14
+        with:
+          # Create tags without prefix (e.g., "1.2.3" instead of "v1.2.3")
+          tag-prefix: ''
+          # Default to minor version bump if no conventional commit patterns found
+          # - "BREAKING CHANGE" or "major" → major bump (1.0.0 → 2.0.0)
+          # - "feat" or "minor" → minor bump (1.0.0 → 1.1.0)
+          # - Other changes → patch bump (1.0.0 → 1.0.1)
+          default: minor
