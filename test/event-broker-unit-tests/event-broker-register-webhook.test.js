@@ -24,7 +24,6 @@ describe('event broker webhook endpoint registration', () => {
 			return (req, res, next) => next()
 		}
 
-		// Setup cds mocks
 		const cds = require('@sap/cds')
 		const originalServer = cds.server
 		if (bodyParserLimit) {
