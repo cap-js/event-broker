@@ -1,11 +1,11 @@
 # GitHub Actions workflow for automated version bumping
 name: Version Bump
 
-# Trigger this workflow when code is pushed to the master branch
+# Trigger this workflow when code is pushed to the main branch
 on:
   push:
     branches:
-      - master
+      - main
 
 # Grant write permissions to modify repository contents (create tags, update files)
 permissions:
