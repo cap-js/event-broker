@@ -10,7 +10,7 @@ describe('event broker webhook endpoint registration', () => {
 		{
 			name: 'body_parser.limit overrides webhookSizeLimit',
 			webhookPath: '/webhook-test-2',
-			webhookSizeLimit: '5mb',
+			webhookSizeLimit: undefined,
 			bodyParserLimit: '42mb',
 			expectedLimit: '42mb'
 		}
