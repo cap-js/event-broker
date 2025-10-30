@@ -35,6 +35,7 @@
           "format": "cloudevents",
           "outbox": true,
           "webhookPath": "/-/cds/event-broker/webhook",
+          "webhookSizeLimit": "1mb",
           "vcap": {
             "label": "event-broker"
           }
