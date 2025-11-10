@@ -76,7 +76,7 @@ To set a size limit for events accepted by the webhook, set the ``webhookSizeLim
 }
 ```
 
-If the parameter is not set, the [global request body size limit](https://pages.github.tools.sap/cap/docs/node.js/cds-server#maximum-request-body-size) ``cds.server.body_parser.limit`` is taken into account. If this parameter is not set either, the default value of ``1mb``is used.
+If the parameter is not set, the [global request body size limit](https://pages.github.tools.sap/cap/docs/node.js/cds-server#maximum-request-body-size) ``cds.env.server.body_parser.limit`` is taken into account. If this parameter is not set either, the default value of ``1mb``is used.
 
 ## Support, Feedback, Contributing
 
