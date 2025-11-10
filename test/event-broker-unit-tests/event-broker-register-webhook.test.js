@@ -25,9 +25,9 @@ describe('event broker webhook endpoint registration', () => {
 		}
 
 		const cds = require('@sap/cds')
-		const originalServer = cds.server
+		const originalServer = cds.env.server
 		if (bodyParserLimit) {
-			cds.server = { body_parser: { limit: bodyParserLimit } }
+			cds.env.server = { body_parser: { limit: bodyParserLimit } }
 		}
 
 		const EventBroker = require('../../cds-plugin.js')
