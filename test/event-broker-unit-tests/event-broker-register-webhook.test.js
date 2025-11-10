@@ -53,7 +53,7 @@ describe('event broker webhook endpoint registration', () => {
 
 		// Cleanup
 		express.json = originalJson
-		cds.server = originalServer
+		cds.env.server = originalServer
 	})
 
 })
