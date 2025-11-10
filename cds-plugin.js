@@ -311,7 +311,9 @@ class EventBroker extends cds.MessagingService {
     } else {
       cds.app.post(webhookBasePath, _validateCertificate.bind(this))
     }
-    cds.app.post(webhookBasePath, express.json())
+
+    const limit = this.options.webhookSizeLimit ?? cds.env.server.body_parser?.limit ?? "1mb"
+    cds.app.post(webhookBasePath, express.json({ limit }))
     cds.app.post(webhookBasePath, this.onEventReceived.bind(this))
   }
 
