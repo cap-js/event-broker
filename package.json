@@ -21,6 +21,7 @@
     "@sap/cds": ">=8"
   },
   "devDependencies": {
+    "@cap-js/sqlite": "^1",
     "@cap-js/event-broker": "file:.",
     "@cap-js/cds-test": ">=0",
     "@cap-js/sqlite": ">=1",
