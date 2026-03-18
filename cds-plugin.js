@@ -352,4 +352,258 @@ class EventBroker extends cds.MessagingService {
   }
 }
 
+// ============================================================================
+// ORD Integration Dependency Provider
+// ============================================================================
+
+/**
+ * Known Event Broker service kinds
+ */
+const EVENT_BROKER_KINDS = ['event-broker', 'event-broker-ias']
+
+/**
+ * Get all Event Broker messaging service configurations from cds.env.requires
+ * @returns {Array} Array of { name, config } objects
+ */
+function getEventBrokerConfigs() {
+  const envRequires = cds.env?.requires
+  if (!envRequires) return []
+
+  const configs = []
+  for (const [name, config] of Object.entries(envRequires)) {
+    if (!config || typeof config !== 'object') continue
+
+    const isEventBroker =
+      (config.kind && EVENT_BROKER_KINDS.includes(config.kind)) ||
+      (config.vcap?.label && EVENT_BROKER_KINDS.some(kind => config.vcap.label.includes(kind)))
+
+    if (isEventBroker) {
+      configs.push({ name, config })
+    }
+  }
+
+  return configs
+}
+
+/**
+ * Extract namespace from Event Broker credentials ceSource.
+ *
+ * ceSource format: "/default/<namespace>/..." or array with such strings
+ * Examples:
+ *   "/default/sap.s4/source-system" -> "sap.s4"
+ *   ["/default/beb-demo-nodejs/local"] -> "beb-demo-nodejs"
+ *
+ * @returns {string|null} Extracted namespace or null
+ */
+function extractNamespaceFromCeSource() {
+  const configs = getEventBrokerConfigs()
+
+  for (const { config } of configs) {
+    const credentials = config.credentials
+    if (!credentials) continue
+
+    // ceSource can be a string or an array
+    const ceSource = Array.isArray(credentials.ceSource) ? credentials.ceSource[0] : credentials.ceSource
+    if (!ceSource || typeof ceSource !== 'string') continue
+
+    // Parse ceSource: "/default/<namespace>/..." or "/<namespace>/..."
+    const parts = ceSource.split('/').filter(Boolean)
+    if (parts.length < 2) continue
+
+    // If first part is "default", namespace is second part, otherwise first part
+    const namespace = parts[0] === 'default' ? parts[1] : parts[0]
+    if (namespace) return namespace
+  }
+
+  return null
+}
+
+/**
+ * Get subscribed topics from Event Broker messaging services at runtime.
+ * Reads the subscribedTopics property from initialized messaging services.
+ *
+ * @returns {Array<string>} Array of subscribed topic names
+ */
+function getSubscribedTopics() {
+  const services = cds.services
+  if (!services) return []
+
+  const topics = new Set()
+  const configs = getEventBrokerConfigs()
+
+  for (const { name } of configs) {
+    const service = services[name]
+    if (!service || typeof service.subscribedTopics === 'undefined') continue
+
+    const subscribedTopics = service.subscribedTopics
+
+    if (subscribedTopics instanceof Map) {
+      for (const topic of subscribedTopics.keys()) {
+        if (topic && topic !== '*' && !topic.includes('messaging/error')) {
+          topics.add(topic)
+        }
+      }
+    } else if (subscribedTopics instanceof Set) {
+      for (const topic of subscribedTopics) {
+        if (topic && topic !== '*' && !topic.includes('messaging/error')) {
+          topics.add(topic)
+        }
+      }
+    } else if (Array.isArray(subscribedTopics)) {
+      for (const topic of subscribedTopics) {
+        if (topic && topic !== '*' && !topic.includes('messaging/error')) {
+          topics.add(topic)
+        }
+      }
+    }
+  }
+
+  return Array.from(topics)
+}
+
+/**
+ * Annotation name for event resource ORD ID mapping.
+ * Applied to event definitions in CDS.
+ */
+const ORD_EVENT_RESOURCE_ANNOTATION = '@ORD.Extensions.eventResource'
+
+/**
+ * Reads event resource mappings from CDS model annotations.
+ *
+ * Scans cds.model.definitions for events annotated with @ORD.Extensions.eventResource
+ * and builds a mapping of event types to their ORD event resource IDs.
+ *
+ * @example
+ * // In CDS:
+ * event sap.s4.beh.salesorder.v1.SalesOrder.Changed.v1
+ *   @ORD.Extensions.eventResource: 'sap.s4:eventResource:CE_SALESORDEREVENTS:v1';
+ *
+ * @returns {Map<string, string>} Map of eventType -> ordId
+ */
+function getEventResourceMappingsFromCds() {
+  const LOG = cds.log('event-broker')
+  const mappings = new Map()
+
+  if (!cds.model?.definitions) {
+    LOG.debug?.('No CDS model available')
+    return mappings
+  }
+
+  for (const [name, def] of Object.entries(cds.model.definitions)) {
+    // Check if it's an event definition with the annotation
+    if (def.kind === 'event' && def[ORD_EVENT_RESOURCE_ANNOTATION]) {
+      const ordId = def[ORD_EVENT_RESOURCE_ANNOTATION]
+      if (typeof ordId === 'string' && ordId.trim()) {
+        mappings.set(name, ordId)
+        LOG.debug?.(`Found event ${name} -> ${ordId}`)
+      }
+    }
+  }
+
+  LOG.debug?.(`Found ${mappings.size} annotated events in CDS model`)
+  return mappings
+}
+
+/**
+ * Builds eventResources from CDS annotations and subscribed events.
+ *
+ * Only includes events that are both:
+ * - Annotated with @ORD.Extensions.eventResource in CDS
+ * - Actually subscribed by the application at runtime
+ *
+ * @param {Array<string>} subscribedEvents - Events the app is subscribed to
+ * @param {Map<string, string>} eventResourceMappings - Map of eventType -> ordId from CDS
+ * @returns {Array} eventResources array with {ordId, events} for ORD plugin
+ */
+function buildEventResourcesFromAnnotations(subscribedEvents, eventResourceMappings) {
+  const LOG = cds.log('event-broker')
+  const mappedEvents = new Set()
+
+  // Group subscribed events by their ordId
+  const ordIdToEvents = new Map()
+
+  for (const eventType of subscribedEvents) {
+    const ordId = eventResourceMappings.get(eventType)
+    if (ordId) {
+      if (!ordIdToEvents.has(ordId)) {
+        ordIdToEvents.set(ordId, [])
+      }
+      ordIdToEvents.get(ordId).push(eventType)
+      mappedEvents.add(eventType)
+      LOG.debug?.(`Mapped event ${eventType} to ${ordId}`)
+    }
+  }
+
+  // Build eventResources array
+  const eventResources = []
+  for (const [ordId, events] of ordIdToEvents) {
+    eventResources.push({ ordId, events })
+  }
+
+  // Log unmapped events (subscribed but not annotated)
+  const unmappedEvents = subscribedEvents.filter(e => !mappedEvents.has(e))
+  if (unmappedEvents.length > 0) {
+    LOG.warn(`${unmappedEvents.length} subscribed events not annotated with ${ORD_EVENT_RESOURCE_ANNOTATION}: ${unmappedEvents.join(', ')}`)
+  }
+
+  return eventResources
+}
+
+/**
+ * Register Integration Dependency provider with ORD plugin.
+ * Called once when services are ready.
+ */
+function registerOrdIntegrationDependencyProvider() {
+  const LOG = cds.log('event-broker')
+
+  // Check if ORD plugin is available
+  let ordPlugin
+  try {
+    ordPlugin = require('@cap-js/ord')
+    LOG.info('ORD plugin found, registering Integration Dependency provider')
+  } catch (e) {
+    // ORD plugin not installed - that's fine
+    LOG.debug?.('ORD plugin not installed:', e.message)
+    return
+  }
+
+  if (!ordPlugin.registerIntegrationDependencyProvider) {
+    // Older ORD plugin version without Extension API
+    LOG.debug?.('ORD plugin version does not support Extension API')
+    return
+  }
+
+  // Register provider function
+  ordPlugin.registerIntegrationDependencyProvider(() => {
+    // Get subscribed events at runtime
+    const subscribedEvents = getSubscribedTopics()
+    if (subscribedEvents.length === 0) {
+      LOG.debug?.('No subscribed events found')
+      return null
+    }
+
+    // Get event resource mappings from CDS annotations
+    const eventResourceMappings = getEventResourceMappingsFromCds()
+    if (eventResourceMappings.size === 0) {
+      LOG.debug?.('No events annotated with @ORD.Extensions.eventResource')
+      return null
+    }
+
+    // Build eventResources from annotations and subscribed events
+    const eventResources = buildEventResourcesFromAnnotations(subscribedEvents, eventResourceMappings)
+    if (eventResources.length === 0) {
+      LOG.debug?.('No eventResources could be built from annotations')
+      return null
+    }
+
+    LOG.info(`Providing ${eventResources.length} eventResource(s) for ORD Integration Dependency`)
+    return { eventResources }
+  })
+}
+
+// Register when services are served (runtime only)
+cds.once('served', () => {
+  registerOrdIntegrationDependencyProvider()
+})
+
 module.exports = EventBroker

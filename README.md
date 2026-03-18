@@ -63,7 +63,7 @@ For more information, please see [SAP Cloud Application Event Hub](https://help.
 
 ### webhookSizeLimit
 
-To set a size limit for events accepted by the webhook, set the ``webhookSizeLimit``parameter in the ``package.json`` file in the root folder of your app, e.g.
+To set a size limit for events accepted by the webhook, set the `webhookSizeLimit`parameter in the `package.json` file in the root folder of your app, e.g.
 
 ```jsonc
 "cds": {
@@ -76,7 +76,79 @@ To set a size limit for events accepted by the webhook, set the ``webhookSizeLim
 }
 ```
 
-If the parameter is not set, the [global request body size limit](https://pages.github.tools.sap/cap/docs/node.js/cds-server#maximum-request-body-size) ``cds.env.server.body_parser.limit`` is taken into account. If this parameter is not set either, the default value of ``1mb``is used.
+If the parameter is not set, the [global request body size limit](https://pages.github.tools.sap/cap/docs/node.js/cds-server#maximum-request-body-size) `cds.env.server.body_parser.limit` is taken into account. If this parameter is not set either, the default value of `1mb`is used.
+
+## ORD Integration
+
+When both `@cap-js/event-broker` and `@cap-js/ord` plugins are installed, the Event Broker plugin can expose consumed events as an **Integration Dependency** in the ORD document.
+
+### Configuration via CDS Annotation
+
+To enable ORD Integration Dependencies, annotate consumed event definitions in your CDS model with `@ORD.Extensions.eventResource`. This maps your subscribed event types to their corresponding ORD event resource identifiers.
+
+```cds
+// srv/services.cds
+
+// External events consumed from SAP S/4HANA via Event Broker
+event sap.s4.beh.businesspartner.v1.BusinessPartner.Changed.v1
+    @ORD.Extensions.eventResource: 'sap.s4:eventResource:CE_BUSINESSPARTNEREVENTS:v1';
+
+event sap.s4.beh.businesspartner.v1.BusinessPartner.Created.v1
+    @ORD.Extensions.eventResource: 'sap.s4:eventResource:CE_BUSINESSPARTNEREVENTS:v1';
+
+event sap.s4.beh.salesorder.v1.SalesOrder.Changed.v1
+    @ORD.Extensions.eventResource: 'sap.s4:eventResource:CE_SALESORDEREVENTS:v1';
+```
+
+The `ordId` values should match the event resource identifiers from the SAP Business Accelerator Hub or your event source's ORD document.
+
+### How it works
+
+At runtime, when services are served, the Event Broker plugin:
+
+1. Scans the CDS model for events annotated with `@ORD.Extensions.eventResource`
+2. Collects all subscribed event topics from active messaging services
+3. Matches subscribed events against the annotated event definitions
+4. Registers the matching eventResources with the ORD plugin's Extension API
+
+Only events that are both:
+
+- Annotated with `@ORD.Extensions.eventResource` in CDS AND
+- Actually subscribed by your application
+
+will appear in the ORD document. Events that are subscribed but not annotated will trigger a warning log.
+
+### Example ORD Output
+
+```json
+{
+  "integrationDependencies": [
+    {
+      "ordId": "customer.myapp:integrationDependency:consumedEvents:v1",
+      "title": "Consumed Events",
+      "aspects": [
+        {
+          "title": "Subscribed Event Types",
+          "eventResources": [
+            {
+              "ordId": "sap.s4:eventResource:CE_BUSINESSPARTNEREVENTS:v1",
+              "subset": [
+                {
+                  "eventType": "sap.s4.beh.businesspartner.v1.BusinessPartner.Changed.v1"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+```
+
+### No Annotation = No Integration Dependency
+
+If no events are annotated with `@ORD.Extensions.eventResource`, no Integration Dependency will be generated. This is intentional - the annotation ensures that event resources are properly mapped to their official ORD identifiers.
 
 ## Support, Feedback, Contributing
 
