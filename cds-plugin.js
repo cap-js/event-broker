@@ -124,6 +124,13 @@ function _validateCertificate(req, res, next) {
   }
 }
 
+/**
+ * Global registry for programmatic ORD event resource mappings.
+ * Populated via EventBroker.subscribe() method.
+ * @type {Map<string, string>} eventType -> ordId
+ */
+const programmaticOrdMappings = new Map()
+
 class EventBroker extends cds.MessagingService {
   async init() {
     await super.init()
@@ -350,6 +357,33 @@ class EventBroker extends cds.MessagingService {
       res.status(500).json({ message: 'Internal Server Error!' })
     }
   }
+
+  /**
+   * Subscribe to an event with ORD metadata.
+   * This consolidates event subscription and ORD Integration Dependency declaration.
+   *
+   * @example
+   * const messaging = await cds.connect.to("messaging")
+   * messaging.subscribe("sap.s4.beh.salesorder.v1.SalesOrder.Changed.v1", {
+   *   eventResourceOrdId: "sap.s4:eventResource:CE_SALESORDEREVENTS:v1"
+   * }, async (event) => {
+   *   console.log("Event received:", event)
+   * })
+   *
+   * @param {string} event - The event type to subscribe to
+   * @param {object} options - Options for ORD Integration Dependency
+   * @param {string} options.eventResourceOrdId - The ORD ID of the event resource (e.g., "sap.s4:eventResource:...")
+   * @param {Function} handler - The event handler function
+   */
+  subscribe(event, options, handler) {
+    // Store ORD mapping if provided
+    if (options?.eventResourceOrdId) {
+      programmaticOrdMappings.set(event, options.eventResourceOrdId)
+    }
+
+    // Delegate to standard messaging.on()
+    return this.on(event, handler)
+  }
 }
 
 // ============================================================================
@@ -462,75 +496,26 @@ function getSubscribedTopics() {
 }
 
 /**
- * Annotation name for event resource ORD ID mapping.
- * Applied to event definitions in CDS.
- */
-const ORD_EVENT_RESOURCE_ANNOTATION = '@ORD.Extensions.eventResource'
-
-/**
- * Reads event resource mappings from CDS model annotations.
- *
- * Scans cds.model.definitions for events annotated with @ORD.Extensions.eventResource
- * and builds a mapping of event types to their ORD event resource IDs.
- *
- * @example
- * // In CDS:
- * event sap.s4.beh.salesorder.v1.SalesOrder.Changed.v1
- *   @ORD.Extensions.eventResource: 'sap.s4:eventResource:CE_SALESORDEREVENTS:v1';
- *
- * @returns {Map<string, string>} Map of eventType -> ordId
- */
-function getEventResourceMappingsFromCds() {
-  const LOG = cds.log('event-broker')
-  const mappings = new Map()
-
-  if (!cds.model?.definitions) {
-    LOG.debug?.('No CDS model available')
-    return mappings
-  }
-
-  for (const [name, def] of Object.entries(cds.model.definitions)) {
-    // Check if it's an event definition with the annotation
-    if (def.kind === 'event' && def[ORD_EVENT_RESOURCE_ANNOTATION]) {
-      const ordId = def[ORD_EVENT_RESOURCE_ANNOTATION]
-      if (typeof ordId === 'string' && ordId.trim()) {
-        mappings.set(name, ordId)
-        LOG.debug?.(`Found event ${name} -> ${ordId}`)
-      }
-    }
-  }
-
-  LOG.debug?.(`Found ${mappings.size} annotated events in CDS model`)
-  return mappings
-}
-
-/**
- * Builds eventResources from CDS annotations and subscribed events.
+ * Builds eventResources from programmatic mappings and subscribed events.
  *
  * Only includes events that are both:
- * - Annotated with @ORD.Extensions.eventResource in CDS
+ * - Registered via messaging.subscribe() with ordId option
  * - Actually subscribed by the application at runtime
  *
  * @param {Array<string>} subscribedEvents - Events the app is subscribed to
- * @param {Map<string, string>} eventResourceMappings - Map of eventType -> ordId from CDS
  * @returns {Array} eventResources array with {ordId, events} for ORD plugin
  */
-function buildEventResourcesFromAnnotations(subscribedEvents, eventResourceMappings) {
-  const LOG = cds.log('event-broker')
-  const mappedEvents = new Set()
-
+function buildEventResources(subscribedEvents) {
   // Group subscribed events by their ordId
   const ordIdToEvents = new Map()
 
   for (const eventType of subscribedEvents) {
-    const ordId = eventResourceMappings.get(eventType)
+    const ordId = programmaticOrdMappings.get(eventType)
     if (ordId) {
       if (!ordIdToEvents.has(ordId)) {
         ordIdToEvents.set(ordId, [])
       }
       ordIdToEvents.get(ordId).push(eventType)
-      mappedEvents.add(eventType)
-      LOG.debug?.(`Mapped event ${eventType} to ${ordId}`)
     }
   }
 
@@ -538,12 +523,6 @@ function buildEventResourcesFromAnnotations(subscribedEvents, eventResourceMappi
   const eventResources = []
   for (const [ordId, events] of ordIdToEvents) {
     eventResources.push({ ordId, events })
-  }
-
-  // Log unmapped events (subscribed but not annotated)
-  const unmappedEvents = subscribedEvents.filter(e => !mappedEvents.has(e))
-  if (unmappedEvents.length > 0) {
-    LOG.warn(`${unmappedEvents.length} subscribed events not annotated with ${ORD_EVENT_RESOURCE_ANNOTATION}: ${unmappedEvents.join(', ')}`)
   }
 
   return eventResources
@@ -554,22 +533,17 @@ function buildEventResourcesFromAnnotations(subscribedEvents, eventResourceMappi
  * Called once when services are ready.
  */
 function registerOrdIntegrationDependencyProvider() {
-  const LOG = cds.log('event-broker')
-
   // Check if ORD plugin is available
   let ordPlugin
   try {
     ordPlugin = require('@cap-js/ord')
-    LOG.info('ORD plugin found, registering Integration Dependency provider')
   } catch (e) {
     // ORD plugin not installed - that's fine
-    LOG.debug?.('ORD plugin not installed:', e.message)
     return
   }
 
   if (!ordPlugin.registerIntegrationDependencyProvider) {
     // Older ORD plugin version without Extension API
-    LOG.debug?.('ORD plugin version does not support Extension API')
     return
   }
 
@@ -578,25 +552,20 @@ function registerOrdIntegrationDependencyProvider() {
     // Get subscribed events at runtime
     const subscribedEvents = getSubscribedTopics()
     if (subscribedEvents.length === 0) {
-      LOG.debug?.('No subscribed events found')
       return null
     }
 
-    // Get event resource mappings from CDS annotations
-    const eventResourceMappings = getEventResourceMappingsFromCds()
-    if (eventResourceMappings.size === 0) {
-      LOG.debug?.('No events annotated with @ORD.Extensions.eventResource')
+    // Check if any programmatic mappings exist
+    if (programmaticOrdMappings.size === 0) {
       return null
     }
 
-    // Build eventResources from annotations and subscribed events
-    const eventResources = buildEventResourcesFromAnnotations(subscribedEvents, eventResourceMappings)
+    // Build eventResources from programmatic mappings and subscribed events
+    const eventResources = buildEventResources(subscribedEvents)
     if (eventResources.length === 0) {
-      LOG.debug?.('No eventResources could be built from annotations')
       return null
     }
 
-    LOG.info(`Providing ${eventResources.length} eventResource(s) for ORD Integration Dependency`)
     return { eventResources }
   })
 }

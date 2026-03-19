@@ -82,41 +82,60 @@ If the parameter is not set, the [global request body size limit](https://pages.
 
 When both `@cap-js/event-broker` and `@cap-js/ord` plugins are installed, the Event Broker plugin can expose consumed events as an **Integration Dependency** in the ORD document.
 
-### Configuration via CDS Annotation
+### Using messaging.subscribe()
 
-To enable ORD Integration Dependencies, annotate consumed event definitions in your CDS model with `@ORD.Extensions.eventResource`. This maps your subscribed event types to their corresponding ORD event resource identifiers.
+Use the `subscribe()` method instead of `messaging.on()` to declare event subscriptions with ORD metadata in a single place:
 
-```cds
-// srv/services.cds
+```javascript
+// srv/server.js
+const cds = require("@sap/cds");
 
-// External events consumed from SAP S/4HANA via Event Broker
-event sap.s4.beh.businesspartner.v1.BusinessPartner.Changed.v1
-    @ORD.Extensions.eventResource: 'sap.s4:eventResource:CE_BUSINESSPARTNEREVENTS:v1';
+cds.on("loaded", async () => {
+  const messaging = await cds.connect.to("messaging");
 
-event sap.s4.beh.businesspartner.v1.BusinessPartner.Created.v1
-    @ORD.Extensions.eventResource: 'sap.s4:eventResource:CE_BUSINESSPARTNEREVENTS:v1';
-
-event sap.s4.beh.salesorder.v1.SalesOrder.Changed.v1
-    @ORD.Extensions.eventResource: 'sap.s4:eventResource:CE_SALESORDEREVENTS:v1';
+  // Subscribe to event with ORD Integration Dependency metadata
+  messaging.subscribe(
+    "sap.s4.beh.businesspartner.v1.BusinessPartner.Changed.v1",
+    {
+      eventResourceOrdId: "sap.s4:eventResource:CE_BUSINESSPARTNEREVENTS:v1",
+    },
+    async (event) => {
+      console.log("Event received:", event);
+    },
+  );
+});
 ```
 
-The `ordId` values should match the event resource identifiers from the SAP Business Accelerator Hub or your event source's ORD document.
+The `eventResourceOrdId` value should match the event resource identifier from the SAP Business Accelerator Hub or your event source's ORD document.
+
+### Multiple Event Types per Event Resource
+
+A single event resource can contain multiple event types. Simply use the same `eventResourceOrdId` for related events:
+
+```javascript
+// Both events belong to the same CE_BUSINESSPARTNEREVENTS resource
+messaging.subscribe(
+  "sap.s4.beh.businesspartner.v1.BusinessPartner.Changed.v1",
+  { eventResourceOrdId: "sap.s4:eventResource:CE_BUSINESSPARTNEREVENTS:v1" },
+  handleBPChanged,
+);
+
+messaging.subscribe(
+  "sap.s4.beh.businesspartner.v1.BusinessPartner.Created.v1",
+  { eventResourceOrdId: "sap.s4:eventResource:CE_BUSINESSPARTNEREVENTS:v1" },
+  handleBPCreated,
+);
+```
+
+The plugin automatically groups event types by their `eventResourceOrdId`.
 
 ### How it works
 
 At runtime, when services are served, the Event Broker plugin:
 
-1. Scans the CDS model for events annotated with `@ORD.Extensions.eventResource`
-2. Collects all subscribed event topics from active messaging services
-3. Matches subscribed events against the annotated event definitions
-4. Registers the matching eventResources with the ORD plugin's Extension API
-
-Only events that are both:
-
-- Annotated with `@ORD.Extensions.eventResource` in CDS AND
-- Actually subscribed by your application
-
-will appear in the ORD document. Events that are subscribed but not annotated will trigger a warning log.
+1. Collects all event subscriptions registered via `messaging.subscribe()` with `eventResourceOrdId` option
+2. Groups event types by their event resource ORD ID
+3. Registers the eventResources with the ORD plugin's Extension API
 
 ### Example ORD Output
 
@@ -135,6 +154,9 @@ will appear in the ORD document. Events that are subscribed but not annotated wi
               "subset": [
                 {
                   "eventType": "sap.s4.beh.businesspartner.v1.BusinessPartner.Changed.v1"
+                },
+                {
+                  "eventType": "sap.s4.beh.businesspartner.v1.BusinessPartner.Created.v1"
                 }
               ]
             }
@@ -146,9 +168,9 @@ will appear in the ORD document. Events that are subscribed but not annotated wi
 }
 ```
 
-### No Annotation = No Integration Dependency
+### Backwards Compatibility
 
-If no events are annotated with `@ORD.Extensions.eventResource`, no Integration Dependency will be generated. This is intentional - the annotation ensures that event resources are properly mapped to their official ORD identifiers.
+The `subscribe()` method is **non-breaking** - existing code using `messaging.on()` continues to work. However, only events registered via `messaging.subscribe()` with the `eventResourceOrdId` option will appear in the ORD Integration Dependency.
 
 ## Support, Feedback, Contributing
 
