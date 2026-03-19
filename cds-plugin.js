@@ -124,6 +124,9 @@ function _validateCertificate(req, res, next) {
   }
 }
 
+// Logger for ORD integration (outside class context)
+const LOG = cds.log('event-broker')
+
 /**
  * Global registry for programmatic ORD event resource mappings.
  * Populated via EventBroker.subscribe() method.
@@ -391,144 +394,6 @@ class EventBroker extends cds.MessagingService {
 // ============================================================================
 
 /**
- * Known Event Broker service kinds
- */
-const EVENT_BROKER_KINDS = ['event-broker', 'event-broker-ias']
-
-/**
- * Get all Event Broker messaging service configurations from cds.env.requires
- * @returns {Array} Array of { name, config } objects
- */
-function getEventBrokerConfigs() {
-  const envRequires = cds.env?.requires
-  if (!envRequires) return []
-
-  const configs = []
-  for (const [name, config] of Object.entries(envRequires)) {
-    if (!config || typeof config !== 'object') continue
-
-    const isEventBroker =
-      (config.kind && EVENT_BROKER_KINDS.includes(config.kind)) ||
-      (config.vcap?.label && EVENT_BROKER_KINDS.some(kind => config.vcap.label.includes(kind)))
-
-    if (isEventBroker) {
-      configs.push({ name, config })
-    }
-  }
-
-  return configs
-}
-
-/**
- * Extract namespace from Event Broker credentials ceSource.
- *
- * ceSource format: "/default/<namespace>/..." or array with such strings
- * Examples:
- *   "/default/sap.s4/source-system" -> "sap.s4"
- *   ["/default/beb-demo-nodejs/local"] -> "beb-demo-nodejs"
- *
- * @returns {string|null} Extracted namespace or null
- */
-function extractNamespaceFromCeSource() {
-  const configs = getEventBrokerConfigs()
-
-  for (const { config } of configs) {
-    const credentials = config.credentials
-    if (!credentials) continue
-
-    // ceSource can be a string or an array
-    const ceSource = Array.isArray(credentials.ceSource) ? credentials.ceSource[0] : credentials.ceSource
-    if (!ceSource || typeof ceSource !== 'string') continue
-
-    // Parse ceSource: "/default/<namespace>/..." or "/<namespace>/..."
-    const parts = ceSource.split('/').filter(Boolean)
-    if (parts.length < 2) continue
-
-    // If first part is "default", namespace is second part, otherwise first part
-    const namespace = parts[0] === 'default' ? parts[1] : parts[0]
-    if (namespace) return namespace
-  }
-
-  return null
-}
-
-/**
- * Get subscribed topics from Event Broker messaging services at runtime.
- * Reads the subscribedTopics property from initialized messaging services.
- *
- * @returns {Array<string>} Array of subscribed topic names
- */
-function getSubscribedTopics() {
-  const services = cds.services
-  if (!services) return []
-
-  const topics = new Set()
-  const configs = getEventBrokerConfigs()
-
-  for (const { name } of configs) {
-    const service = services[name]
-    if (!service || typeof service.subscribedTopics === 'undefined') continue
-
-    const subscribedTopics = service.subscribedTopics
-
-    if (subscribedTopics instanceof Map) {
-      for (const topic of subscribedTopics.keys()) {
-        if (topic && topic !== '*' && !topic.includes('messaging/error')) {
-          topics.add(topic)
-        }
-      }
-    } else if (subscribedTopics instanceof Set) {
-      for (const topic of subscribedTopics) {
-        if (topic && topic !== '*' && !topic.includes('messaging/error')) {
-          topics.add(topic)
-        }
-      }
-    } else if (Array.isArray(subscribedTopics)) {
-      for (const topic of subscribedTopics) {
-        if (topic && topic !== '*' && !topic.includes('messaging/error')) {
-          topics.add(topic)
-        }
-      }
-    }
-  }
-
-  return Array.from(topics)
-}
-
-/**
- * Builds eventResources from programmatic mappings and subscribed events.
- *
- * Only includes events that are both:
- * - Registered via messaging.subscribe() with ordId option
- * - Actually subscribed by the application at runtime
- *
- * @param {Array<string>} subscribedEvents - Events the app is subscribed to
- * @returns {Array} eventResources array with {ordId, events} for ORD plugin
- */
-function buildEventResources(subscribedEvents) {
-  // Group subscribed events by their ordId
-  const ordIdToEvents = new Map()
-
-  for (const eventType of subscribedEvents) {
-    const ordId = programmaticOrdMappings.get(eventType)
-    if (ordId) {
-      if (!ordIdToEvents.has(ordId)) {
-        ordIdToEvents.set(ordId, [])
-      }
-      ordIdToEvents.get(ordId).push(eventType)
-    }
-  }
-
-  // Build eventResources array
-  const eventResources = []
-  for (const [ordId, events] of ordIdToEvents) {
-    eventResources.push({ ordId, events })
-  }
-
-  return eventResources
-}
-
-/**
  * Register Integration Dependency provider with ORD plugin.
  * Called once when services are ready.
  */
@@ -549,23 +414,28 @@ function registerOrdIntegrationDependencyProvider() {
 
   // Register provider function
   ordPlugin.registerIntegrationDependencyProvider(() => {
-    // Get subscribed events at runtime
-    const subscribedEvents = getSubscribedTopics()
-    if (subscribedEvents.length === 0) {
-      return null
-    }
-
-    // Check if any programmatic mappings exist
+    // Simply return eventResources from programmatic mappings
+    // No need to check subscribedTopics - if subscribe() was called, it's subscribed
     if (programmaticOrdMappings.size === 0) {
       return null
     }
 
-    // Build eventResources from programmatic mappings and subscribed events
-    const eventResources = buildEventResources(subscribedEvents)
-    if (eventResources.length === 0) {
-      return null
+    // Group events by ordId
+    const ordIdToEvents = new Map()
+    for (const [eventType, ordId] of programmaticOrdMappings) {
+      if (!ordIdToEvents.has(ordId)) {
+        ordIdToEvents.set(ordId, [])
+      }
+      ordIdToEvents.get(ordId).push(eventType)
     }
 
+    // Build eventResources array
+    const eventResources = []
+    for (const [ordId, events] of ordIdToEvents) {
+      eventResources.push({ ordId, events })
+    }
+
+    LOG.info(`Providing ${eventResources.length} eventResource(s) for ORD Integration Dependency`)
     return { eventResources }
   })
 }
