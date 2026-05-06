@@ -135,7 +135,7 @@ At runtime, when services are served, the Event Broker plugin:
 
 1. Collects all event subscriptions registered via `messaging.subscribe()` with `eventResourceOrdId` option
 2. Groups event types by their event resource ORD ID
-3. Registers the eventResources with the ORD plugin's Extension API
+3. Publishes the Integration Dependency via the CDS event `ord.extension.publish`
 
 ### Example ORD Output
 
