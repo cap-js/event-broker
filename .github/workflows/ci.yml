@@ -31,5 +31,5 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
       - run: if [ ${{ matrix.cds-version }} -eq 8 ]; then npm pkg set devDependencies["@sap/cds"]="8" devDependencies["@cap-js/sqlite"]="1"; fi
-      - run: npm i --legacy-peer-deps
+      - run: npm i
       - run: npm run test
