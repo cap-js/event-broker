@@ -295,14 +295,12 @@ class EventBroker extends cds.MessagingService {
         return next(err)
       })
       cds.app.use(webhookBasePath, (_req, res, next) => {
-        if (
-          cds.context.user.is('system-user') &&
-          cds.context.user.authInfo.token.azp === this.options.credentials.ias.clientId
-        ) {
+        const { user } = cds.context
+        if (user.is('system-user') && (user.authInfo?.token ?? user.tokenInfo).azp === this.options.credentials.ias.clientId) {
           // the token was fetched by event broker -> OK
           return next()
         }
-        if (cds.context.user.is('internal-user')) {
+        if (user.is('internal-user')) {
           // the token was fetched by own credentials -> OK (for testing, developer dashboard, etc.)
           return next()
         }
