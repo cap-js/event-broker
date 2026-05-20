@@ -124,6 +124,16 @@ function _validateCertificate(req, res, next) {
   }
 }
 
+// Logger for ORD integration (outside class context)
+const LOG = cds.log('event-broker')
+
+/**
+ * Global registry for programmatic ORD event resource mappings.
+ * Populated via EventBroker.subscribe() method.
+ * @type {Map<string, string>} eventType -> ordId
+ */
+const programmaticOrdMappings = new Map()
+
 class EventBroker extends cds.MessagingService {
   async init() {
     await super.init()
@@ -348,6 +358,113 @@ class EventBroker extends cds.MessagingService {
       res.status(500).json({ message: 'Internal Server Error!' })
     }
   }
+
+  /**
+   * Subscribe to an event with ORD metadata.
+   * This consolidates event subscription and ORD Integration Dependency declaration.
+   *
+   * @example
+   * const messaging = await cds.connect.to("messaging")
+   * messaging.subscribe("sap.s4.beh.salesorder.v1.SalesOrder.Changed.v1", {
+   *   eventResourceOrdId: "sap.s4:eventResource:CE_SALESORDEREVENTS:v1"
+   * }, async (event) => {
+   *   console.log("Event received:", event)
+   * })
+   *
+   * @param {string} event - The event type to subscribe to
+   * @param {object} options - Options for ORD Integration Dependency
+   * @param {string} options.eventResourceOrdId - The ORD ID of the event resource (e.g., "sap.s4:eventResource:...")
+   * @param {Function} handler - The event handler function
+   */
+  subscribe(event, options, handler) {
+    // Store ORD mapping if provided
+    if (options?.eventResourceOrdId) {
+      programmaticOrdMappings.set(event, options.eventResourceOrdId)
+      // Publish extension immediately - ORD service listener is already registered by now
+      publishOrdExtension()
+    }
+
+    // Delegate to standard messaging.on()
+    return this.on(event, handler)
+  }
 }
+
+// ============================================================================
+// ORD Integration Dependency via Event-Based Extension
+// ============================================================================
+
+/**
+ * Build Integration Dependency extension data for ORD plugin.
+ * Creates the custom ORD content format with integrationDependencies.
+ *
+ * @returns {Object|null} Custom ORD content with integrationDependencies, or null if no mappings
+ */
+function buildIntegrationDependencyExtension() {
+  if (programmaticOrdMappings.size === 0) {
+    return null
+  }
+
+  // Group events by ordId
+  const ordIdToEvents = new Map()
+  for (const [eventType, ordId] of programmaticOrdMappings) {
+    if (!ordIdToEvents.has(ordId)) {
+      ordIdToEvents.set(ordId, [])
+    }
+    ordIdToEvents.get(ordId).push(eventType)
+  }
+
+  // Build eventResources for the aspect
+  const eventResources = []
+  for (const [ordId, events] of ordIdToEvents) {
+    eventResources.push({
+      ordId,
+      subset: events.map(eventType => ({ eventType }))
+    })
+  }
+
+  // Get namespace from cds.env.ord or derive from package name
+  const ordNamespace = cds.env?.ord?.namespace || 'customer.app'
+
+  // Return custom ORD content format
+  return {
+    integrationDependencies: [{
+      ordId: `${ordNamespace}:integrationDependency:consumedEvents:v1`,
+      title: 'Consumed Events',
+      version: '1.0.0',
+      releaseStatus: 'active',
+      visibility: 'public',
+      mandatory: false,
+      aspects: [{
+        title: 'Subscribed Event Types',
+        mandatory: false,
+        eventResources
+      }]
+    }]
+  }
+}
+
+/**
+ * Publish ORD extension via CDS event.
+ * Called once when services are ready.
+ */
+function publishOrdExtension() {
+  const extensionData = buildIntegrationDependencyExtension()
+  if (!extensionData) {
+    return
+  }
+
+  LOG.info(`Publishing ORD extension with ${extensionData.integrationDependencies[0].aspects[0].eventResources.length} eventResource(s)`)
+
+  // Emit the extension via CDS event
+  cds.emit('ord.extension.publish', {
+    id: 'event-broker-consumed-events',
+    data: extensionData
+  })
+}
+
+// Register when services are served (runtime only) - safety net for late emitters
+cds.once('served', () => {
+  publishOrdExtension()
+})
 
 module.exports = EventBroker

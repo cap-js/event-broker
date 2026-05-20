@@ -63,7 +63,7 @@ For more information, please see [SAP Cloud Application Event Hub](https://help.
 
 ### webhookSizeLimit
 
-To set a size limit for events accepted by the webhook, set the ``webhookSizeLimit``parameter in the ``package.json`` file in the root folder of your app, e.g.
+To set a size limit for events accepted by the webhook, set the `webhookSizeLimit`parameter in the `package.json` file in the root folder of your app, e.g.
 
 ```jsonc
 "cds": {
@@ -76,7 +76,101 @@ To set a size limit for events accepted by the webhook, set the ``webhookSizeLim
 }
 ```
 
-If the parameter is not set, the [global request body size limit](https://pages.github.tools.sap/cap/docs/node.js/cds-server#maximum-request-body-size) ``cds.env.server.body_parser.limit`` is taken into account. If this parameter is not set either, the default value of ``1mb``is used.
+If the parameter is not set, the [global request body size limit](https://pages.github.tools.sap/cap/docs/node.js/cds-server#maximum-request-body-size) `cds.env.server.body_parser.limit` is taken into account. If this parameter is not set either, the default value of `1mb`is used.
+
+## ORD Integration
+
+When both `@cap-js/event-broker` and `@cap-js/ord` plugins are installed, the Event Broker plugin can expose consumed events as an **Integration Dependency** in the ORD document.
+
+### Using messaging.subscribe()
+
+Use the `subscribe()` method instead of `messaging.on()` to declare event subscriptions with ORD metadata in a single place:
+
+```javascript
+// srv/server.js
+const cds = require("@sap/cds");
+
+cds.on("loaded", async () => {
+  const messaging = await cds.connect.to("messaging");
+
+  // Subscribe to event with ORD Integration Dependency metadata
+  messaging.subscribe(
+    "sap.s4.beh.businesspartner.v1.BusinessPartner.Changed.v1",
+    {
+      eventResourceOrdId: "sap.s4:eventResource:CE_BUSINESSPARTNEREVENTS:v1",
+    },
+    async (event) => {
+      console.log("Event received:", event);
+    },
+  );
+});
+```
+
+The `eventResourceOrdId` value should match the event resource identifier from the SAP Business Accelerator Hub or your event source's ORD document.
+
+### Multiple Event Types per Event Resource
+
+A single event resource can contain multiple event types. Simply use the same `eventResourceOrdId` for related events:
+
+```javascript
+// Both events belong to the same CE_BUSINESSPARTNEREVENTS resource
+messaging.subscribe(
+  "sap.s4.beh.businesspartner.v1.BusinessPartner.Changed.v1",
+  { eventResourceOrdId: "sap.s4:eventResource:CE_BUSINESSPARTNEREVENTS:v1" },
+  handleBPChanged,
+);
+
+messaging.subscribe(
+  "sap.s4.beh.businesspartner.v1.BusinessPartner.Created.v1",
+  { eventResourceOrdId: "sap.s4:eventResource:CE_BUSINESSPARTNEREVENTS:v1" },
+  handleBPCreated,
+);
+```
+
+The plugin automatically groups event types by their `eventResourceOrdId`.
+
+### How it works
+
+At runtime, when services are served, the Event Broker plugin:
+
+1. Collects all event subscriptions registered via `messaging.subscribe()` with `eventResourceOrdId` option
+2. Groups event types by their event resource ORD ID
+3. Publishes the Integration Dependency via the CDS event `ord.extension.publish`
+
+### Example ORD Output
+
+```json
+{
+  "integrationDependencies": [
+    {
+      "ordId": "customer.myapp:integrationDependency:consumedEvents:v1",
+      "title": "Consumed Events",
+      "aspects": [
+        {
+          "title": "Subscribed Event Types",
+          "eventResources": [
+            {
+              "ordId": "sap.s4:eventResource:CE_BUSINESSPARTNEREVENTS:v1",
+              "subset": [
+                {
+                  "eventType": "sap.s4.beh.businesspartner.v1.BusinessPartner.Changed.v1"
+                },
+                {
+                  "eventType": "sap.s4.beh.businesspartner.v1.BusinessPartner.Created.v1"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+```
+
+### Backwards Compatibility
+
+The `subscribe()` method is **non-breaking** - existing code using `messaging.on()` continues to work. However, only events registered via `messaging.subscribe()` with the `eventResourceOrdId` option will appear in the ORD Integration Dependency.
 
 ## Support, Feedback, Contributing
 
