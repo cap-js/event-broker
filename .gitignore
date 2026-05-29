@@ -132,7 +132,3 @@ dist
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
-
-# custom
-package-lock.json
-!test/event-broker-ias-multitenant/package-lock.json
