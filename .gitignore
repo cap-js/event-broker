@@ -136,6 +136,3 @@ dist
 # custom
 package-lock.json
 !test/event-broker-ias-multitenant/package-lock.json
-.npmrc
-.babelrc
-.prettierrc.js
