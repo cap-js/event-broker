@@ -1,6 +1,6 @@
 {
   "name": "@cap-js/event-broker",
-  "version": "0.2.0",
+  "version": "0.3.1",
   "description": "CDS plugin providing integration with SAP Cloud Application Event Hub",
   "repository": {
     "type": "git",
@@ -20,7 +20,7 @@
   },
   "devDependencies": {
     "@cap-js/event-broker": "file:.",
-    "@cap-js/cds-test": ">=0",
+    "@cap-js/cds-test": "^0",
     "@cap-js/sqlite": ">=1",
     "@sap-cloud-sdk/resilience": "^4.0.0",
     "@sap/xssec": "^4.2.4"
@@ -33,6 +33,7 @@
           "format": "cloudevents",
           "outbox": true,
           "webhookPath": "/-/cds/event-broker/webhook",
+          "webhookSizeLimit": "1mb",
           "vcap": {
             "label": "event-broker"
           }

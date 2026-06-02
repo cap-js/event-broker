@@ -3,6 +3,8 @@
     "event-broker": [
       {
         "credentials": {
+          "systemId": "321",
+          "ceSource": ["/default/cap.test"],
           "authentication-type": "X509_IAS",
           "eventing": {
             "http": {

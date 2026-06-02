@@ -5,4 +5,6 @@ service OwnSrv {
     key ID2  : String;
         name : String;
   }
+
+  action triggerEvent();
 }

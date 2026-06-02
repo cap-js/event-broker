@@ -5,10 +5,38 @@ class IdentityService {
   }
 }
 
+class XsuaaService {
+  constructor(credentials, config) {
+    this.credentials = credentials
+    this.config = config
+  }
+}
+
+class XsuaaToken {
+  constructor() {}
+}
+
 class ValidationError extends Error {
   constructor(message = 'Invalid token') {
     super(message)
     this.name = 'ValidationError'
+  }
+}
+
+class ExpiredTokenError extends Error {
+  constructor(message = 'Token expired') {
+    super(message)
+    this.name = 'ExpiredTokenError'
+    this.token = {
+      getZoneId: () => 'dummyZoneId'
+    }
+  }
+}
+
+const Token = {
+  decodeCache: null,
+  enableDecodeCache() {
+    this.decodeCache = true
   }
 }
 
@@ -26,6 +54,9 @@ module.exports = {
     }
     return { token: dummyTokenInfo }
   },
+  Token,
   IdentityService,
-  errors: { ValidationError }
+  XsuaaService,
+  XsuaaToken,
+  errors: { ValidationError, ExpiredTokenError }
 }
