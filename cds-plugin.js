@@ -18,7 +18,8 @@ const _JSONorString = string => {
 const normalizeIncomingMessage = message => {
   const _payload = typeof message === 'object' ? message : _JSONorString(message)
   let data, headers
-  if (typeof _payload === 'object' && 'data' in _payload) {
+  // Note: `typeof null === 'object'`, so guard explicitly to avoid `'data' in null` throwing.
+  if (_payload !== null && typeof _payload === 'object' && 'data' in _payload) {
     data = _payload.data
     headers = { ..._payload }
     delete headers.data
