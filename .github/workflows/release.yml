@@ -6,6 +6,19 @@ permissions:
 
 on:
   workflow_dispatch:
+    inputs:
+      #version:
+      #  description: 'version to release, e.g. v0.3.3'
+      #  required: true
+      #  default: 'v0.3.2'
+      patchlevel:
+        type: choice
+        default: patch
+        description: Select the level of the version auto-increase
+        options:
+          - patch
+          - minor
+          - major
 
 env:
   NPM_CONFIG_IGNORE_SCRIPTS: true
@@ -26,6 +39,41 @@ jobs:
           npm i
           npm run lint
           npm run test
+      #- name: Create Tag 
+      #  uses: rickstaa/action-create-tag@v1.7.2
+      #  with:
+      #    tag: ${{ github.event.inputs.version }}
+      - name:  'Automated Version Bump and Tag Creation'
+        id: bump_version
+        uses:  'phips28/gh-action-bump-version@master'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          version-type: ${{ github.event.inputs.patchlevel }}
+          target-branch: ${{ github.ref_name }}
+          commit-message: 'CI: bumps version to {{version}} [skip ci]'
+          tag-prefix: 'v'
+      - name: Update CHANGELOG
+        id: changelog
+        uses: requarks/changelog-action@v1
+        with:
+          token: ${{ github.token }}
+          tag: ${{ steps.bump_version.outputs.newTag }}
+          includeInvalidCommits: true
+          excludeTypes: docs,build,CI
+      #- name: DebugOut changelog.md
+      #  run: |
+      #    echo "DEBUGOUT: "
+      #    cat CHANGELOG.md
+      - name: Commit CHANGELOG.md
+        uses: stefanzweifel/git-auto-commit-action@v7
+        with:
+          branch: ${{ github.ref_name }}
+          commit_message: 'docs: update CHANGELOG.md for ${{ github.ref_name }} [skip ci]'
+          file_pattern: CHANGELOG.md
+      #- name: get version
+      #  id: package-version
+      #  uses: martinbeentjes/npm-get-version-action@v1.3.1
       - name: get version
         id: package-version
         uses: martinbeentjes/npm-get-version-action@3cf273023a0dda27efcd3164bdfb51908dd46a5b # v1.3.1
@@ -37,6 +85,6 @@ jobs:
       - name: create a GitHub release
         uses: ncipollo/release-action@339a81892b84b4eeb0f6e744e4574d79d0d9b8dd # v1.21.0
         with:
-          tag: 'v${{ steps.package-version.outputs.current-version }}'
+          tag: '${{ steps.bump_version.outputs.newTag }}' # 'v${{ steps.package-version.outputs.current-version }}'
           body: '${{ steps.parse-changelog.outputs.body }}'
       - run: npm publish --access public --provenance
