@@ -127,18 +127,15 @@ function _validateCertificate(req, res, next) {
 // Logger for ORD integration (outside class context)
 const LOG = cds.log('event-broker')
 
-/**
- * Global registry for programmatic ORD event resource mappings.
- * Populated via EventBroker.subscribe() method.
- * @type {Map<string, string>} eventType -> ordId
- */
-const programmaticOrdMappings = new Map()
-
 class EventBroker extends cds.MessagingService {
   async init() {
     await super.init()
     cds.once('listening', () => {
       this.startListening()
+    })
+    // ORD Integration Dependencies are derived from `@OrdId` annotations on consumed events
+    cds.once('served', () => {
+      publishOrdExtension(this.subscribedTopics)
     })
     this.isMultitenancy = cds.env.requires.multitenancy || cds.env.profiles.includes('mtx-sidecar')
 
@@ -361,73 +358,51 @@ class EventBroker extends cds.MessagingService {
     }
   }
 
-  /**
-   * Subscribe to an event with ORD metadata.
-   * This consolidates event subscription and ORD Integration Dependency declaration.
-   *
-   * @example
-   * const messaging = await cds.connect.to("messaging")
-   * messaging.subscribe("sap.s4.beh.salesorder.v1.SalesOrder.Changed.v1", {
-   *   eventResourceOrdId: "sap.s4:eventResource:CE_SALESORDEREVENTS:v1"
-   * }, async (event) => {
-   *   console.log("Event received:", event)
-   * })
-   *
-   * @param {string} event - The event type to subscribe to
-   * @param {object} options - Options for ORD Integration Dependency
-   * @param {string} options.eventResourceOrdId - The ORD ID of the event resource (e.g., "sap.s4:eventResource:...")
-   * @param {Function} handler - The event handler function
-   */
-  subscribe(event, options, handler) {
-    // Store ORD mapping if provided
-    if (options?.eventResourceOrdId) {
-      programmaticOrdMappings.set(event, options.eventResourceOrdId)
-      // Publish extension immediately - ORD service listener is already registered by now
-      publishOrdExtension()
-    }
-
-    // Delegate to standard messaging.on()
-    return this.on(event, handler)
-  }
 }
 
 // ============================================================================
-// ORD Integration Dependency via Event-Based Extension
+// ORD Integration Dependency via `@OrdId` CDS Annotation
 // ============================================================================
 
 /**
- * Build Integration Dependency extension data for ORD plugin.
- * Creates the custom ORD content format with integrationDependencies.
+ * Determine the consumed events that are annotated with `@OrdId` in the CDS model
+ * and group them by their `@OrdId` value.
  *
- * @returns {Object|null} Custom ORD content with integrationDependencies, or null if no mappings
+ * @param {Map<string, string>} subscribedTopics - topic -> event name, as tracked by cds.MessagingService
+ * @returns {Map<string, string[]>} ordId -> event type names
  */
-function buildIntegrationDependencyExtension() {
-  if (programmaticOrdMappings.size === 0) {
-    return null
-  }
-
-  // Group events by ordId
+function getOrdAnnotatedConsumedEvents(subscribedTopics) {
+  const subscribedEvents = new Set(subscribedTopics.values())
   const ordIdToEvents = new Map()
-  for (const [eventType, ordId] of programmaticOrdMappings) {
-    if (!ordIdToEvents.has(ordId)) {
-      ordIdToEvents.set(ordId, [])
-    }
-    ordIdToEvents.get(ordId).push(eventType)
+
+  for (const name in cds.model?.definitions ?? {}) {
+    const def = cds.model.definitions[name]
+    if (def.kind !== 'event' || !def['@OrdId'] || !subscribedEvents.has(name)) continue
+    if (!ordIdToEvents.has(def['@OrdId'])) ordIdToEvents.set(def['@OrdId'], [])
+    ordIdToEvents.get(def['@OrdId']).push(name)
   }
 
-  // Build eventResources for the aspect
-  const eventResources = []
-  for (const [ordId, events] of ordIdToEvents) {
-    eventResources.push({
-      ordId,
-      subset: events.map(eventType => ({ eventType }))
-    })
-  }
+  return ordIdToEvents
+}
 
-  // Get namespace from cds.env.ord or derive from package name
+/**
+ * Build Integration Dependency extension data for the ORD plugin from `@OrdId`-annotated,
+ * actually consumed events.
+ *
+ * @param {Map<string, string>} subscribedTopics - topic -> event name, as tracked by cds.MessagingService
+ * @returns {object|null} Custom ORD content with integrationDependencies, or null if nothing to publish
+ */
+function buildIntegrationDependencyExtension(subscribedTopics) {
+  const ordIdToEvents = getOrdAnnotatedConsumedEvents(subscribedTopics)
+  if (ordIdToEvents.size === 0) return null
+
+  const eventResources = [...ordIdToEvents].map(([ordId, events]) => ({
+    ordId,
+    subset: events.map(eventType => ({ eventType }))
+  }))
+
   const ordNamespace = cds.env?.ord?.namespace || 'customer.app'
 
-  // Return custom ORD content format
   return {
     integrationDependencies: [{
       ordId: `${ordNamespace}:integrationDependency:consumedEvents:v1`,
@@ -446,27 +421,20 @@ function buildIntegrationDependencyExtension() {
 }
 
 /**
- * Publish ORD extension via CDS event.
- * Called once when services are ready.
+ * Publish ORD extension via CDS event, once services are served.
+ *
+ * @param {Map<string, string>} subscribedTopics - topic -> event name, as tracked by cds.MessagingService
  */
-function publishOrdExtension() {
-  const extensionData = buildIntegrationDependencyExtension()
-  if (!extensionData) {
-    return
-  }
+function publishOrdExtension(subscribedTopics) {
+  const extensionData = buildIntegrationDependencyExtension(subscribedTopics)
+  if (!extensionData) return
 
   LOG.info(`Publishing ORD extension with ${extensionData.integrationDependencies[0].aspects[0].eventResources.length} eventResource(s)`)
 
-  // Emit the extension via CDS event
   cds.emit('ord.extension.publish', {
     id: 'event-broker-consumed-events',
     data: extensionData
   })
 }
-
-// Register when services are served (runtime only) - safety net for late emitters
-cds.once('served', () => {
-  publishOrdExtension()
-})
 
 module.exports = EventBroker
