@@ -18,7 +18,8 @@ const _JSONorString = string => {
 const normalizeIncomingMessage = message => {
   const _payload = typeof message === 'object' ? message : _JSONorString(message)
   let data, headers
-  if (typeof _payload === 'object' && 'data' in _payload) {
+  // Note: `typeof null === 'object'`, so guard explicitly to avoid `'data' in null` throwing.
+  if (_payload !== null && typeof _payload === 'object' && 'data' in _payload) {
     data = _payload.data
     headers = { ..._payload }
     delete headers.data
@@ -302,14 +303,12 @@ class EventBroker extends cds.MessagingService {
         return next(err)
       })
       cds.app.use(webhookBasePath, (_req, res, next) => {
-        if (
-          cds.context.user.is('system-user') &&
-          cds.context.user.tokenInfo.azp === this.options.credentials.ias.clientId
-        ) {
+        const { user } = cds.context
+        if (user.is('system-user') && (user.authInfo?.token ?? user.tokenInfo).azp === this.options.credentials.ias.clientId) {
           // the token was fetched by event broker -> OK
           return next()
         }
-        if (cds.context.user.is('internal-user')) {
+        if (user.is('internal-user')) {
           // the token was fetched by own credentials -> OK (for testing, developer dashboard, etc.)
           return next()
         }
