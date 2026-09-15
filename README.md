@@ -11,6 +11,7 @@ CDS plugin providing integration with SAP Cloud Application Event Hub (technical
 - [About this project](#about-this-project)
 - [Requirements](#requirements)
 - [Setup](#setup)
+- [ORD Integration](#ord-integration)
 - [Support, Feedback, Contributing](#support-feedback-contributing)
 - [Code of Conduct](#code-of-conduct)
 - [Licensing](#licensing)
@@ -63,7 +64,7 @@ For more information, please see [SAP Cloud Application Event Hub](https://help.
 
 ### webhookSizeLimit
 
-To set a size limit for events accepted by the webhook, set the ``webhookSizeLimit``parameter in the ``package.json`` file in the root folder of your app, e.g.
+To set a size limit for events accepted by the webhook, set the `webhookSizeLimit`parameter in the `package.json` file in the root folder of your app, e.g.
 
 ```jsonc
 "cds": {
@@ -76,7 +77,116 @@ To set a size limit for events accepted by the webhook, set the ``webhookSizeLim
 }
 ```
 
-If the parameter is not set, the [global request body size limit](https://pages.github.tools.sap/cap/docs/node.js/cds-server#maximum-request-body-size) ``cds.env.server.body_parser.limit`` is taken into account. If this parameter is not set either, the default value of ``1mb``is used.
+If the parameter is not set, the [global request body size limit](https://pages.github.tools.sap/cap/docs/node.js/cds-server#maximum-request-body-size) `cds.env.server.body_parser.limit` is taken into account. If this parameter is not set either, the default value of `1mb`is used.
+
+## ORD Integration
+
+When both `@cap-js/event-broker` and `@cap-js/ord` plugins are installed, the Event Broker plugin can expose consumed events as an **Integration Dependency** in the ORD document.
+
+### Using the `@OrdId` annotation
+
+Annotate the events you consume with `@OrdId`, giving the ORD ID of the external event resource they belong to. Subscribe to these events as usual, with `messaging.on()`:
+
+```cds
+// srv/services.cds
+service EventService {
+  @OrdId: 'sap.s4:eventResource:CE_BUSINESSPARTNEREVENTS:v1'
+  event sap.s4.beh.businesspartner.v1.BusinessPartner.Changed.v1 { /* ... */ }
+}
+```
+
+```javascript
+// srv/server.js
+const cds = require("@sap/cds");
+
+cds.once("served", async () => {
+  const messaging = await cds.connect.to("messaging");
+
+  messaging.on(
+    "sap.s4.beh.businesspartner.v1.BusinessPartner.Changed.v1",
+    async (event) => {
+      console.log("Event received:", event);
+    },
+  );
+});
+```
+
+The `@OrdId` value should match the event resource identifier from the SAP Business Accelerator Hub or your event source's ORD document.
+
+### Multiple Event Types per Event Resource
+
+A single event resource can contain multiple event types. Simply annotate related events with the same `@OrdId`:
+
+```cds
+service EventService {
+  @OrdId: 'sap.s4:eventResource:CE_BUSINESSPARTNEREVENTS:v1'
+  event sap.s4.beh.businesspartner.v1.BusinessPartner.Changed.v1 { /* ... */ }
+
+  @OrdId: 'sap.s4:eventResource:CE_BUSINESSPARTNEREVENTS:v1'
+  event sap.s4.beh.businesspartner.v1.BusinessPartner.Created.v1 { /* ... */ }
+}
+```
+
+The plugin automatically groups event types by their `@OrdId`.
+
+### Configuring the Integration Dependency's package
+
+The generated Integration Dependency requires a `partOfPackage` (mandatory per the ORD specification). By default, it is derived from the namespace (`cds.env.ord.namespace`) and the application name from `package.json`, matching the `@cap-js/ord` plugin's default package naming convention. If your app uses a custom package layout (e.g. because `sap:*` policy levels are configured), override it explicitly:
+
+```json
+// .cdsrc.json
+{
+  "ord": {
+    "integrationDependency": {
+      "partOfPackage": "sap.myapp:package:events:v1"
+    }
+  }
+}
+```
+
+### How it works
+
+At runtime, once services are served, the Event Broker plugin:
+
+1. Determines all events actually consumed via `messaging.on()`
+2. Looks up their `@OrdId` annotation in the CDS model and groups event types by it
+3. Publishes the Integration Dependency via the CDS event `ord.extension.publish`
+
+### Example ORD Output
+
+```json
+{
+  "integrationDependencies": [
+    {
+      "ordId": "customer.myapp:integrationDependency:consumedEvents:v1",
+      "title": "Consumed Events",
+      "partOfPackage": "customer.myapp:package:myapp:v1",
+      "aspects": [
+        {
+          "title": "Subscribed Event Types",
+          "eventResources": [
+            {
+              "ordId": "sap.s4:eventResource:CE_BUSINESSPARTNEREVENTS:v1",
+              "subset": [
+                {
+                  "eventType": "sap.s4.beh.businesspartner.v1.BusinessPartner.Changed.v1"
+                },
+                {
+                  "eventType": "sap.s4.beh.businesspartner.v1.BusinessPartner.Created.v1"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+```
+
+### Non-breaking
+
+The `@OrdId` annotation is **non-breaking** - existing code using `messaging.on()` continues to work unchanged. Only events that are both consumed via `messaging.on()` and annotated with `@OrdId` will appear in the ORD Integration Dependency.
 
 ## Support, Feedback, Contributing
 
