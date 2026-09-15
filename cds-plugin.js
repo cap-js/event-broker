@@ -385,6 +385,20 @@ function getOrdAnnotatedConsumedEvents(subscribedTopics) {
 }
 
 /**
+ * Derive the default `partOfPackage` ordId, matching the `@cap-js/ord` plugin's own
+ * default package naming convention (`<namespace>:package:<technicalName>:v1`).
+ *
+ * @param {string} ordNamespace
+ * @returns {string}
+ */
+function getDefaultPartOfPackage(ordNamespace) {
+  const pkg = JSON.parse(cds.utils.fs.readFileSync(cds.utils.path.join(cds.root, 'package.json'), 'utf-8'))
+  const appName = pkg.name.replace(/^@/, '').replace(/[@/]/g, '-')
+  const technicalName = appName.replace(/[^a-zA-Z0-9]/g, '')
+  return `${ordNamespace}:package:${technicalName}:v1`
+}
+
+/**
  * Build Integration Dependency extension data for the ORD plugin from `@OrdId`-annotated,
  * actually consumed events.
  *
@@ -401,6 +415,8 @@ function buildIntegrationDependencyExtension(subscribedTopics) {
   }))
 
   const ordNamespace = cds.env?.ord?.namespace || 'customer.app'
+  // `partOfPackage` is mandatory per the ORD spec; allow overriding via cds.env.ord.integrationDependency
+  const partOfPackage = cds.env?.ord?.integrationDependency?.partOfPackage || getDefaultPartOfPackage(ordNamespace)
 
   return {
     integrationDependencies: [{
@@ -409,6 +425,7 @@ function buildIntegrationDependencyExtension(subscribedTopics) {
       version: '1.0.0',
       releaseStatus: 'active',
       visibility: 'public',
+      partOfPackage,
       mandatory: false,
       aspects: [{
         title: 'Subscribed Event Types',

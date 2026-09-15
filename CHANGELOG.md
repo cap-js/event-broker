@@ -10,6 +10,10 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
 - ORD Integration Dependencies for events consumed via `messaging.on()` are now declared using the `@OrdId` CDS annotation
 
+### Fixed
+
+- Generated Integration Dependency now includes the mandatory `partOfPackage` (defaults to the `@cap-js/ord` plugin's default package ordId, overridable via `cds.env.ord.integrationDependency.partOfPackage`)
+
 ## Version 0.3.1 - 2025-11-10
 
 ### Added

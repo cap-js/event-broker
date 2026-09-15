@@ -129,6 +129,21 @@ service EventService {
 
 The plugin automatically groups event types by their `@OrdId`.
 
+### Configuring the Integration Dependency's package
+
+The generated Integration Dependency requires a `partOfPackage` (mandatory per the ORD specification). By default, it is derived from the namespace (`cds.env.ord.namespace`) and the application name from `package.json`, matching the `@cap-js/ord` plugin's default package naming convention. If your app uses a custom package layout (e.g. because `sap:*` policy levels are configured), override it explicitly:
+
+```json
+// .cdsrc.json
+{
+  "ord": {
+    "integrationDependency": {
+      "partOfPackage": "sap.myapp:package:events:v1"
+    }
+  }
+}
+```
+
 ### How it works
 
 At runtime, once services are served, the Event Broker plugin:
@@ -145,6 +160,7 @@ At runtime, once services are served, the Event Broker plugin:
     {
       "ordId": "customer.myapp:integrationDependency:consumedEvents:v1",
       "title": "Consumed Events",
+      "partOfPackage": "customer.myapp:package:myapp:v1",
       "aspects": [
         {
           "title": "Subscribed Event Types",

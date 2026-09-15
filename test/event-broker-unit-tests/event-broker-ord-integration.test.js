@@ -45,6 +45,8 @@ describe('event broker ORD integration (@OrdId annotation)', () => {
     expect(payload.data.integrationDependencies[0].aspects[0].eventResources).toEqual([
       { ordId: 'sap.demo:eventResource:TestEvents:v1', subset: [{ eventType: 'EventService.sap.demo.Test.Created.v1' }] }
     ])
+    // mandatory per ORD spec, derived from package.json name when not configured
+    expect(payload.data.integrationDependencies[0].partOfPackage).toBe('customer.app:package:capjseventbroker:v1')
   })
 
   test('does not publish for events without an @OrdId annotation', async () => {
@@ -119,5 +121,20 @@ describe('event broker ORD integration (@OrdId annotation)', () => {
 
     const [, payload] = ordExtensionCalls()[0]
     expect(payload.data.integrationDependencies[0].ordId).toBe('sap.demo:integrationDependency:consumedEvents:v1')
+  })
+
+  test('uses cds.env.ord.integrationDependency.partOfPackage to override the default partOfPackage', async () => {
+    cds.model.definitions['EventService.sap.demo.Test.Created.v1'] = {
+      kind: 'event',
+      '@OrdId': 'sap.demo:eventResource:TestEvents:v1'
+    }
+
+    const eb = await initEventBroker()
+    eb.on('EventService.sap.demo.Test.Created.v1', () => {})
+    cds.env.ord = { integrationDependency: { partOfPackage: 'sap.demo:package:custom:v1' } }
+    await cds.emit('served')
+
+    const [, payload] = ordExtensionCalls()[0]
+    expect(payload.data.integrationDependencies[0].partOfPackage).toBe('sap.demo:package:custom:v1')
   })
 })
