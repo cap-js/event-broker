@@ -3,7 +3,8 @@ const EB = require('../../cds-plugin.js')
 
 describe('event broker error handling', () => {
   beforeEach(() => {
-    cds.env.requires = {}
+    delete cds.env.requires.multitenancy
+    delete cds.env.requires.myIas
   })
 
   test('no eb and ias credentials', async () => {
@@ -49,7 +50,7 @@ describe('event broker error handling', () => {
     eb.options.credentials = { ceSource: '/foo' /* leave out props to enforce failure */ }
     cds.env.requires.myIas = { vcap: { label: 'identity' } }
     await eb.init()
-    expect(eb.emit('foo', { some: 'message' })).rejects.toThrow()
+    await expect(eb.emit('foo', { some: 'message' })).rejects.toThrow()
   })
 
   test('x509 but no cert[path]', async () => {
@@ -89,10 +90,6 @@ describe('event broker error handling', () => {
     eb2.options.webhookPath = '/-/cds/event-broker/webhook'
     await eb2.init()
     eb2.on('foo', () => {})
-    try {
-      eb2.startListening()
-    } catch (e) {
-      expect(e.message).toMatch(/endpoint already registered/)
-    }
+    expect(() => eb2.startListening()).toThrow(/endpoint already registered/)
   })
 })
