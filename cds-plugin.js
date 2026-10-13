@@ -125,11 +125,18 @@ function _validateCertificate(req, res, next) {
   }
 }
 
+// Logger for ORD integration (outside class context)
+const LOG = cds.log('event-broker')
+
 class EventBroker extends cds.MessagingService {
   async init() {
     await super.init()
     cds.once('listening', () => {
       this.startListening()
+    })
+    // ORD Integration Dependencies are derived from `@OrdId` annotations on consumed events
+    cds.once('served', () => {
+      publishOrdExtension(this.subscribedTopics)
     })
     this.isMultitenancy = cds.env.requires.multitenancy || cds.env.profiles.includes('mtx-sidecar')
 
@@ -349,6 +356,101 @@ class EventBroker extends cds.MessagingService {
       res.status(500).json({ message: 'Internal Server Error!' })
     }
   }
+
+}
+
+// ============================================================================
+// ORD Integration Dependency via `@OrdId` CDS Annotation
+// ============================================================================
+
+/**
+ * Determine the consumed events that are annotated with `@OrdId` in the CDS model
+ * and group them by their `@OrdId` value.
+ *
+ * @param {Map<string, string>} subscribedTopics - topic -> event name, as tracked by cds.MessagingService
+ * @returns {Map<string, string[]>} ordId -> event type names
+ */
+function getOrdAnnotatedConsumedEvents(subscribedTopics) {
+  const subscribedEvents = new Set(subscribedTopics.values())
+  const ordIdToEvents = new Map()
+
+  for (const name in cds.model?.definitions ?? {}) {
+    const def = cds.model.definitions[name]
+    if (def.kind !== 'event' || !def['@OrdId'] || !subscribedEvents.has(name)) continue
+    if (!ordIdToEvents.has(def['@OrdId'])) ordIdToEvents.set(def['@OrdId'], [])
+    ordIdToEvents.get(def['@OrdId']).push(name)
+  }
+
+  return ordIdToEvents
+}
+
+/**
+ * Derive the default `partOfPackage` ordId, matching the `@cap-js/ord` plugin's own
+ * default package naming convention (`<namespace>:package:<technicalName>:v1`).
+ *
+ * @param {string} ordNamespace
+ * @returns {string}
+ */
+function getDefaultPartOfPackage(ordNamespace) {
+  const pkg = JSON.parse(cds.utils.fs.readFileSync(cds.utils.path.join(cds.root, 'package.json'), 'utf-8'))
+  const appName = pkg.name.replace(/^@/, '').replace(/[@/]/g, '-')
+  const technicalName = appName.replace(/[^a-zA-Z0-9]/g, '')
+  return `${ordNamespace}:package:${technicalName}:v1`
+}
+
+/**
+ * Build Integration Dependency extension data for the ORD plugin from `@OrdId`-annotated,
+ * actually consumed events.
+ *
+ * @param {Map<string, string>} subscribedTopics - topic -> event name, as tracked by cds.MessagingService
+ * @returns {object|null} Custom ORD content with integrationDependencies, or null if nothing to publish
+ */
+function buildIntegrationDependencyExtension(subscribedTopics) {
+  const ordIdToEvents = getOrdAnnotatedConsumedEvents(subscribedTopics)
+  if (ordIdToEvents.size === 0) return null
+
+  const eventResources = [...ordIdToEvents].map(([ordId, events]) => ({
+    ordId,
+    subset: events.map(eventType => ({ eventType }))
+  }))
+
+  const ordNamespace = cds.env?.ord?.namespace || 'customer.app'
+  // `partOfPackage` is mandatory per the ORD spec; allow overriding via cds.env.ord.integrationDependency
+  const partOfPackage = cds.env?.ord?.integrationDependency?.partOfPackage || getDefaultPartOfPackage(ordNamespace)
+
+  return {
+    integrationDependencies: [{
+      ordId: `${ordNamespace}:integrationDependency:consumedEvents:v1`,
+      title: 'Consumed Events',
+      version: '1.0.0',
+      releaseStatus: 'active',
+      visibility: 'public',
+      partOfPackage,
+      mandatory: false,
+      aspects: [{
+        title: 'Subscribed Event Types',
+        mandatory: false,
+        eventResources
+      }]
+    }]
+  }
+}
+
+/**
+ * Publish ORD extension via CDS event, once services are served.
+ *
+ * @param {Map<string, string>} subscribedTopics - topic -> event name, as tracked by cds.MessagingService
+ */
+function publishOrdExtension(subscribedTopics) {
+  const extensionData = buildIntegrationDependencyExtension(subscribedTopics)
+  if (!extensionData) return
+
+  LOG.info(`Publishing ORD extension with ${extensionData.integrationDependencies[0].aspects[0].eventResources.length} eventResource(s)`)
+
+  cds.emit('ord.extension.publish', {
+    id: 'event-broker-consumed-events',
+    data: extensionData
+  })
 }
 
 module.exports = EventBroker
