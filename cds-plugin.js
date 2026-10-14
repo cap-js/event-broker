@@ -128,9 +128,7 @@ function _validateCertificate(req, res, next) {
 class EventBroker extends cds.MessagingService {
   async init() {
     await super.init()
-    cds.once('listening', () => {
-      this.startListening()
-    })
+
     this.isMultitenancy = cds.env.requires.multitenancy || cds.env.profiles.includes('mtx-sidecar')
 
     this.auth = {} // { kind: 'cert', validationCert?, privateKey? } or { kind: 'ias', ias }
@@ -170,23 +168,37 @@ class EventBroker extends cds.MessagingService {
     }
 
     this.LOG._debug && this.LOG.debug('using auth: ' + this.auth.kind)
+
+    cds.once('listening', () => {
+      this.startListening()
+    })
+
+    // publish integration dependency to be served via @cap-js/ord
+    cds.on('subscribe', (srv, eve) => {
+      const event = srv.events[eve]
+      if (event?.['@topic'] && event?.['@ordId']) {
+        const id = 'foo'
+        const data = { bar: 'baz' }
+        cds.emit('ord.extension.publish', { id, data })
+      }
+    })
   }
 
   get agent() {
     return (this.__agentCache ??=
       this.auth.kind === 'ias'
         ? new https.Agent({
-          cert: this.auth.ias.credentials.certificate,
-          key: this.auth.ias.credentials.key
-        })
+            cert: this.auth.ias.credentials.certificate,
+            key: this.auth.ias.credentials.key
+          })
         : new https.Agent({
-          cert:
-            this.options.x509.cert ??
-            cds.utils.fs.readFileSync(cds.utils.path.resolve(cds.root, this.options.x509.certPath)),
-          key:
-            this.options.x509.pkey ??
-            cds.utils.fs.readFileSync(cds.utils.path.resolve(cds.root, this.options.x509.pkeyPath))
-        }))
+            cert:
+              this.options.x509.cert ??
+              cds.utils.fs.readFileSync(cds.utils.path.resolve(cds.root, this.options.x509.certPath)),
+            key:
+              this.options.x509.pkey ??
+              cds.utils.fs.readFileSync(cds.utils.path.resolve(cds.root, this.options.x509.pkeyPath))
+          }))
   }
 
   async handle(msg) {
@@ -297,7 +309,10 @@ class EventBroker extends cds.MessagingService {
       })
       cds.app.use(webhookBasePath, (_req, res, next) => {
         const { user } = cds.context
-        if (user.is('system-user') && (user.authInfo?.token ?? user.tokenInfo).azp === this.options.credentials.ias.clientId) {
+        if (
+          user.is('system-user') &&
+          (user.authInfo?.token ?? user.tokenInfo).azp === this.options.credentials.ias.clientId
+        ) {
           // the token was fetched by event broker -> OK
           return next()
         }
@@ -311,7 +326,7 @@ class EventBroker extends cds.MessagingService {
       cds.app.post(webhookBasePath, _validateCertificate.bind(this))
     }
 
-    const limit = this.options.webhookSizeLimit ?? cds.env.server.body_parser?.limit ?? "1mb"
+    const limit = this.options.webhookSizeLimit ?? cds.env.server.body_parser?.limit ?? '1mb'
     cds.app.post(webhookBasePath, express.json({ limit }))
     cds.app.post(webhookBasePath, this.onEventReceived.bind(this))
   }
