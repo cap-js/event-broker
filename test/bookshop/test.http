@@ -1,0 +1,12 @@
+GET http://localhost:4004/odata/v4/customers/Customers(1)
+Authorization: Basic alice:wonderland
+
+###
+
+PATCH http://localhost:4004/odata/v4/customers/Customers(1)
+Authorization: Basic alice:wonderland
+Content-Type: application/json
+
+{
+  "name": "Jane Doe"
+}
